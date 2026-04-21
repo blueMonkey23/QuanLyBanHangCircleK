@@ -138,6 +138,9 @@ async function updateProduct(req, res, next) {
     };
 
     const result = await repository.updateProduct(maSanPham, data);
+    if (!result) {
+      throw new AppError('NOT_FOUND', 'Product not found', 404);
+    }
     res.json(result);
   } catch (error) {
     next(normalizeDatabaseError(error));
@@ -148,6 +151,9 @@ async function deleteProduct(req, res, next) {
   try {
     const maSanPham = parseRequiredInt(req.params.maSanPham, 'maSanPham');
     const result = await repository.softDeleteProduct(maSanPham);
+    if (!result) {
+      throw new AppError('NOT_FOUND', 'Product not found', 404);
+    }
     res.json(result);
   } catch (error) {
     next(normalizeDatabaseError(error));

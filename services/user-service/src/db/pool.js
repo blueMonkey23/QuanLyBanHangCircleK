@@ -2,14 +2,34 @@ const mysql = require('mysql2/promise');
 
 let pool;
 
+function requireEnv(name) {
+  const value = process.env[name];
+  if (value === undefined || value === null || value === '') {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 function getPool() {
   if (!pool) {
+    const host = requireEnv('DB_HOST');
+    const port = Number(requireEnv('DB_PORT'));
+    if (!Number.isFinite(port) || port <= 0) {
+      throw new Error('DB_PORT must be a positive number');
+    }
+
+    const user = requireEnv('DB_USER');
+    const password = requireEnv('DB_PASSWORD');
+    const database = requireEnv('DB_NAME');
+    const useSsl = String(process.env.DB_SSL || '').toLowerCase() === 'true';
+
     pool = mysql.createPool({
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT || 3306),
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'circlek',
+      host,
+      port,
+      user,
+      password,
+      database,
+      ssl: useSsl ? { rejectUnauthorized: true } : undefined,
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,

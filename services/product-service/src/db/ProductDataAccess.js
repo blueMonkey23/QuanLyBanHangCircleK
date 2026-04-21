@@ -63,7 +63,7 @@ async function getProducts(filters) {
 async function getProductById(maSanPham) {
   const pool = getPool();
   const [rows] = await pool.query(
-    'SELECT * FROM SanPham WHERE MaSanPham = ? LIMIT 1',
+    'SELECT * FROM SanPham WHERE MaSanPham = ? AND IsDeleted = 0 LIMIT 1',
     [maSanPham]
   );
   return mapProductRow(rows[0]) || null;
@@ -90,7 +90,7 @@ async function createProduct(data) {
 
 async function updateProduct(maSanPham, data) {
   const pool = getPool();
-  await pool.query(
+  const [result] = await pool.query(
     'UPDATE SanPham SET TenSanPham = ?, Gia = ?, SoLuong = ?, MaDanhMuc = ?, MaNCC = ? WHERE MaSanPham = ? AND IsDeleted = 0',
     [
       data.tenSanPham,
@@ -101,13 +101,22 @@ async function updateProduct(maSanPham, data) {
       maSanPham,
     ]
   );
-  return mapMessageRow(null, 'Updated');
+  if (!result.affectedRows) {
+    return null;
+  }
+  return mapMessageRow(result, 'Updated');
 }
 
 async function softDeleteProduct(maSanPham) {
   const pool = getPool();
-  await pool.query('UPDATE SanPham SET IsDeleted = 1 WHERE MaSanPham = ?', [maSanPham]);
-  return mapMessageRow(null, 'Deleted');
+  const [result] = await pool.query(
+    'UPDATE SanPham SET IsDeleted = 1 WHERE MaSanPham = ? AND IsDeleted = 0',
+    [maSanPham]
+  );
+  if (!result.affectedRows) {
+    return null;
+  }
+  return mapMessageRow(result, 'Deleted');
 }
 
 async function listCategories(isDeleted) {
