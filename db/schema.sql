@@ -1,0 +1,116 @@
+-- MySQL 8.0+ schema + stored procedures for Circle K microservices
+-- Uses JSON for order items (sp_order_create)
+
+-- =========================
+-- Schema (DDL)
+-- =========================
+
+CREATE TABLE IF NOT EXISTS VaiTro (
+  MaVaiTro INT AUTO_INCREMENT PRIMARY KEY,
+  TenVaiTro NVARCHAR(100) NOT NULL,
+  CONSTRAINT UQ_VaiTro_TenVaiTro UNIQUE (TenVaiTro)
+);
+
+CREATE TABLE IF NOT EXISTS Quyen (
+  MaQuyen INT AUTO_INCREMENT PRIMARY KEY,
+  TenQuyen NVARCHAR(100) NOT NULL,
+  CONSTRAINT UQ_Quyen_TenQuyen UNIQUE (TenQuyen)
+);
+
+CREATE TABLE IF NOT EXISTS VaiTro_Quyen (
+  MaVaiTro INT NOT NULL,
+  MaQuyen INT NOT NULL,
+  PRIMARY KEY (MaVaiTro, MaQuyen),
+  CONSTRAINT FK_VaiTroQuyen_VaiTro FOREIGN KEY (MaVaiTro) REFERENCES VaiTro(MaVaiTro),
+  CONSTRAINT FK_VaiTroQuyen_Quyen FOREIGN KEY (MaQuyen) REFERENCES Quyen(MaQuyen)
+);
+
+CREATE TABLE IF NOT EXISTS TaiKhoan (
+  MaTaiKhoan INT AUTO_INCREMENT PRIMARY KEY,
+  Username VARCHAR(100) NOT NULL,
+  Password VARCHAR(255) NOT NULL,
+  MaVaiTro INT NOT NULL,
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT UQ_TaiKhoan_Username UNIQUE (Username),
+  CONSTRAINT CHK_TaiKhoan_IsDeleted CHECK (IsDeleted IN (0, 1)),
+  CONSTRAINT FK_TaiKhoan_VaiTro FOREIGN KEY (MaVaiTro) REFERENCES VaiTro(MaVaiTro)
+);
+
+CREATE TABLE IF NOT EXISTS NhanVien (
+  MaNhanVien INT AUTO_INCREMENT PRIMARY KEY,
+  HoTen NVARCHAR(255) NOT NULL,
+  DienThoai VARCHAR(20) NOT NULL,
+  MaTaiKhoan INT NOT NULL,
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT UQ_NhanVien_MaTaiKhoan UNIQUE (MaTaiKhoan),
+  CONSTRAINT CHK_NhanVien_IsDeleted CHECK (IsDeleted IN (0, 1)),
+  CONSTRAINT FK_NhanVien_TaiKhoan FOREIGN KEY (MaTaiKhoan) REFERENCES TaiKhoan(MaTaiKhoan)
+);
+
+CREATE TABLE IF NOT EXISTS DanhMucSanPham (
+  MaDanhMuc INT AUTO_INCREMENT PRIMARY KEY,
+  TenDanhMuc NVARCHAR(255) NOT NULL,
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT CHK_DanhMucSanPham_IsDeleted CHECK (IsDeleted IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS NhaCungCap (
+  MaNCC INT AUTO_INCREMENT PRIMARY KEY,
+  TenCongTy NVARCHAR(255) NOT NULL,
+  DienThoai VARCHAR(20) NOT NULL,
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT CHK_NhaCungCap_IsDeleted CHECK (IsDeleted IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS SanPham (
+  MaSanPham INT AUTO_INCREMENT PRIMARY KEY,
+  TenSanPham NVARCHAR(255) NOT NULL,
+  Gia DECIMAL(18,2) NOT NULL,
+  SoLuong INT NOT NULL,
+  MaDanhMuc INT NOT NULL,
+  MaNCC INT NOT NULL,
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT CHK_SanPham_Gia CHECK (Gia >= 0),
+  CONSTRAINT CHK_SanPham_SoLuong CHECK (SoLuong >= 0),
+  CONSTRAINT CHK_SanPham_IsDeleted CHECK (IsDeleted IN (0, 1)),
+  CONSTRAINT FK_SanPham_DanhMuc FOREIGN KEY (MaDanhMuc) REFERENCES DanhMucSanPham(MaDanhMuc),
+  CONSTRAINT FK_SanPham_NhaCungCap FOREIGN KEY (MaNCC) REFERENCES NhaCungCap(MaNCC)
+);
+
+CREATE TABLE IF NOT EXISTS TBGiamGia (
+  MaGiamGia INT AUTO_INCREMENT PRIMARY KEY,
+  MaSanPham INT NOT NULL,
+  PhanTramGiam INT NOT NULL,
+  NgayTao DATE NOT NULL,
+  NgayKetThuc DATE NOT NULL,
+  INDEX IDX_TBGiamGia_MaSanPham_Ngay (MaSanPham, NgayTao, NgayKetThuc),
+  CONSTRAINT CHK_TBGiamGia_PhanTramGiam CHECK (PhanTramGiam BETWEEN 0 AND 100),
+  CONSTRAINT CHK_TBGiamGia_Ngay CHECK (NgayKetThuc >= NgayTao),
+  CONSTRAINT FK_TBGiamGia_SanPham FOREIGN KEY (MaSanPham) REFERENCES SanPham(MaSanPham)
+);
+
+CREATE TABLE IF NOT EXISTS HoaDon (
+  MaHoaDon INT AUTO_INCREMENT PRIMARY KEY,
+  MaNhanVien INT NOT NULL,
+  NgayTao DATETIME NOT NULL,
+  TongTien DECIMAL(18,2) NOT NULL,
+  PhuongThucThanhToan NVARCHAR(50) NOT NULL,
+  INDEX IDX_HoaDon_NgayTao (NgayTao),
+  CONSTRAINT CHK_HoaDon_TongTien CHECK (TongTien >= 0),
+  CONSTRAINT FK_HoaDon_NhanVien FOREIGN KEY (MaNhanVien) REFERENCES NhanVien(MaNhanVien)
+);
+
+CREATE TABLE IF NOT EXISTS ChiTietHoaDon (
+  MaChiTiet INT AUTO_INCREMENT PRIMARY KEY,
+  MaHoaDon INT NOT NULL,
+  MaSanPham INT NOT NULL,
+  TenSanPham NVARCHAR(255) NOT NULL,
+  SoLuong INT NOT NULL,
+  DonGia DECIMAL(18,2) NOT NULL,
+  GiamGia DECIMAL(18,2) NOT NULL DEFAULT 0,
+  CONSTRAINT CHK_ChiTietHoaDon_SoLuong CHECK (SoLuong > 0),
+  CONSTRAINT CHK_ChiTietHoaDon_DonGia CHECK (DonGia >= 0),
+  CONSTRAINT CHK_ChiTietHoaDon_GiamGia CHECK (GiamGia >= 0),
+  CONSTRAINT FK_ChiTietHoaDon_HoaDon FOREIGN KEY (MaHoaDon) REFERENCES HoaDon(MaHoaDon),
+  CONSTRAINT FK_ChiTietHoaDon_SanPham FOREIGN KEY (MaSanPham) REFERENCES SanPham(MaSanPham)
+);
