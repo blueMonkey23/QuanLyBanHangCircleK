@@ -103,15 +103,23 @@ async function updateAccount(maTaiKhoan, data) {
   try {
     await connection.beginTransaction();
 
-    await connection.query(
+    const [accountResult] = await connection.query(
       'UPDATE TaiKhoan SET MaVaiTro = ? WHERE MaTaiKhoan = ? AND IsDeleted = 0',
       [data.maVaiTro, maTaiKhoan]
     );
 
-    await connection.query(
+    if (!accountResult.affectedRows) {
+      throw createSqlStateError('ACCOUNT_NOT_FOUND');
+    }
+
+    const [employeeResult] = await connection.query(
       'UPDATE NhanVien SET HoTen = ?, DienThoai = ? WHERE MaTaiKhoan = ? AND IsDeleted = 0',
       [data.hoTen, data.dienThoai, maTaiKhoan]
     );
+
+    if (!employeeResult.affectedRows) {
+      throw createSqlStateError('ACCOUNT_NOT_FOUND');
+    }
 
     await connection.commit();
     return mapMessageRow(null, 'Updated');
@@ -126,11 +134,15 @@ async function updateAccount(maTaiKhoan, data) {
 async function changePassword(maTaiKhoan, data) {
   const pool = getPool();
   const [rows] = await pool.query(
-    'SELECT 1 FROM TaiKhoan WHERE MaTaiKhoan = ? AND Password = ? AND IsDeleted = 0 LIMIT 1',
-    [maTaiKhoan, data.oldPassword]
+    'SELECT Password FROM TaiKhoan WHERE MaTaiKhoan = ? AND IsDeleted = 0 LIMIT 1',
+    [maTaiKhoan]
   );
 
   if (rows.length === 0) {
+    throw createSqlStateError('ACCOUNT_NOT_FOUND');
+  }
+
+  if (rows[0].Password !== data.oldPassword) {
     throw createSqlStateError('INVALID_PASSWORD');
   }
 
@@ -149,15 +161,23 @@ async function softDeleteAccount(maTaiKhoan) {
   try {
     await connection.beginTransaction();
 
-    await connection.query(
+    const [accountResult] = await connection.query(
       'UPDATE TaiKhoan SET IsDeleted = 1 WHERE MaTaiKhoan = ?',
       [maTaiKhoan]
     );
 
-    await connection.query(
+    if (!accountResult.affectedRows) {
+      throw createSqlStateError('ACCOUNT_NOT_FOUND');
+    }
+
+    const [employeeResult] = await connection.query(
       'UPDATE NhanVien SET IsDeleted = 1 WHERE MaTaiKhoan = ?',
       [maTaiKhoan]
     );
+
+    if (!employeeResult.affectedRows) {
+      throw createSqlStateError('ACCOUNT_NOT_FOUND');
+    }
 
     await connection.commit();
     return mapMessageRow(null, 'Deleted');
@@ -198,6 +218,8 @@ async function getAccountById(maTaiKhoan) {
      FROM TaiKhoan tk
      JOIN NhanVien nv ON nv.MaTaiKhoan = tk.MaTaiKhoan
      WHERE tk.MaTaiKhoan = ?
+       AND tk.IsDeleted = 0
+       AND nv.IsDeleted = 0
      LIMIT 1`,
     [maTaiKhoan]
   );
