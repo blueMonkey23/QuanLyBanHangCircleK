@@ -146,6 +146,15 @@ CREATE PROCEDURE sp_product_update(
   IN p_maNCC INT
 )
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM SanPham
+    WHERE MaSanPham = p_maSanPham
+      AND IsDeleted = 0
+  ) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PRODUCT_NOT_FOUND';
+  END IF;
+
   UPDATE SanPham
   SET TenSanPham = p_tenSanPham,
       Gia = p_gia,
@@ -162,9 +171,19 @@ CREATE PROCEDURE sp_product_soft_delete(
   IN p_maSanPham INT
 )
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM SanPham
+    WHERE MaSanPham = p_maSanPham
+      AND IsDeleted = 0
+  ) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PRODUCT_NOT_FOUND';
+  END IF;
+
   UPDATE SanPham
   SET IsDeleted = 1
-  WHERE MaSanPham = p_maSanPham;
+  WHERE MaSanPham = p_maSanPham
+    AND IsDeleted = 0;
 
   SELECT 'Deleted' AS message;
 END $$
@@ -188,7 +207,8 @@ CREATE PROCEDURE sp_product_get_by_id(
 BEGIN
   SELECT *
   FROM SanPham
-  WHERE MaSanPham = p_maSanPham;
+  WHERE MaSanPham = p_maSanPham
+    AND IsDeleted = 0;
 END $$
 
 DROP PROCEDURE IF EXISTS sp_category_list $$
@@ -245,6 +265,15 @@ CREATE PROCEDURE sp_user_update_account(
   IN p_dienThoai VARCHAR(20)
 )
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM TaiKhoan
+    WHERE MaTaiKhoan = p_maTaiKhoan
+      AND IsDeleted = 0
+  ) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ACCOUNT_NOT_FOUND';
+  END IF;
+
   UPDATE TaiKhoan
   SET MaVaiTro = p_maVaiTro
   WHERE MaTaiKhoan = p_maTaiKhoan AND IsDeleted = 0;
@@ -267,6 +296,14 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM TaiKhoan
     WHERE MaTaiKhoan = p_maTaiKhoan
+      AND IsDeleted = 0
+  ) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ACCOUNT_NOT_FOUND';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM TaiKhoan
+    WHERE MaTaiKhoan = p_maTaiKhoan
       AND Password = p_oldPasswordHash
       AND IsDeleted = 0
   ) THEN
@@ -285,13 +322,24 @@ CREATE PROCEDURE sp_user_soft_delete_account(
   IN p_maTaiKhoan INT
 )
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM TaiKhoan
+    WHERE MaTaiKhoan = p_maTaiKhoan
+      AND IsDeleted = 0
+  ) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ACCOUNT_NOT_FOUND';
+  END IF;
+
   UPDATE TaiKhoan
   SET IsDeleted = 1
-  WHERE MaTaiKhoan = p_maTaiKhoan;
+  WHERE MaTaiKhoan = p_maTaiKhoan
+    AND IsDeleted = 0;
 
   UPDATE NhanVien
   SET IsDeleted = 1
-  WHERE MaTaiKhoan = p_maTaiKhoan;
+  WHERE MaTaiKhoan = p_maTaiKhoan
+    AND IsDeleted = 0;
 
   SELECT 'Deleted' AS message;
 END $$

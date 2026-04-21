@@ -7,7 +7,7 @@ function parseOptionalInt(value, field) {
   }
 
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
+  if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new AppError('VALIDATION_ERROR', `${field} must be a positive integer`, 400);
   }
 
@@ -72,6 +72,10 @@ function normalizeDatabaseError(error) {
 
   if (error && error.code === 'ER_NO_REFERENCED_ROW_2') {
     return new AppError('VALIDATION_ERROR', 'Referenced record does not exist', 400);
+  }
+
+  if (error && error.sqlState === '45000' && error.message === 'PRODUCT_NOT_FOUND') {
+    return new AppError('NOT_FOUND', 'Product not found', 404);
   }
 
   return error;

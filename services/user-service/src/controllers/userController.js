@@ -71,6 +71,10 @@ function normalizeDatabaseError(error) {
     return new AppError('VALIDATION_ERROR', 'Referenced record does not exist', 400);
   }
 
+  if (error && error.sqlState === '45000' && error.message === 'ACCOUNT_NOT_FOUND') {
+    return new AppError('NOT_FOUND', 'Account not found', 404);
+  }
+
   if (error && error.sqlState === '45000' && error.message === 'INVALID_PASSWORD') {
     return new AppError('VALIDATION_ERROR', 'Old password is incorrect', 400, [
       { field: 'oldPassword', reason: 'INVALID_PASSWORD' },

@@ -1,0 +1,10 @@
+{
+  "name": "circlek-backend-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "db:init": "node scripts/init-db.js",
+    "backend:start": "node scripts/start-backend.js",
+    "backend:smoke": "node scripts/healthcheck.js"
+  }
+}

@@ -2,6 +2,12 @@
 
 This workspace contains four independent services and an API Gateway for demo purposes.
 
+## Requirements
+
+- Node.js 18+.
+- MySQL 8.0+ running locally or reachable from the configured host.
+- A root `.env` file copied from `.env.example` and updated with real MySQL credentials.
+
 ## Services and Ports
 
 - user-service: 7001
@@ -12,11 +18,13 @@ This workspace contains four independent services and an API Gateway for demo pu
 
 ## Setup
 
-1. Copy the root `.env.example` into each service folder as `.env` and adjust MySQL settings if needed.
-2. Install dependencies per service and gateway (each will link the local shared core package):
+1. Copy `.env.example` to `.env` at the project root and update `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
+2. Install dependencies for the shared package, services, and gateway:
 
 ```bash
-cd services/user-service
+cd packages/core
+npm install
+cd ../../services/user-service
 npm install
 cd ../product-service
 npm install
@@ -28,12 +36,27 @@ cd ../../gateway
 npm install
 ```
 
+3. From the project root, initialize the database schema, stored procedures, and seed data:
+
+```bash
+node scripts/init-db.js
+```
+
+If `node scripts/init-db.js` fails with a connection error, MySQL is not running yet or the credentials in `.env` are incorrect.
+
 ## Run
 
-Start each service in its own terminal:
+Run the whole backend stack from the project root:
+
+```bash
+node scripts/start-backend.js
+```
+
+Or start each service manually in its own terminal:
 
 ```bash
 cd services/user-service
+npm install
 npm start
 ```
 
@@ -60,3 +83,11 @@ All services are exposed through the API Gateway:
 - http://localhost:7003/health
 - http://localhost:7004/health
 - http://localhost:8000/health
+
+## Smoke Check
+
+After the backend is running, verify both health endpoints and business routes:
+
+```bash
+node scripts/healthcheck.js
+```

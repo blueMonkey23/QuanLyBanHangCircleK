@@ -1,4 +1,4 @@
-const { loadEnv, getServicePort, createLogger } = require('circlek-core');
+const { loadEnv, getServicePort, createLogger, startServiceServer } = require('circlek-core');
 const app = require('./app');
 
 loadEnv();
@@ -6,6 +6,8 @@ loadEnv();
 const logger = createLogger('api-gateway');
 const port = getServicePort('GATEWAY_PORT', 8000);
 
-app.listen(port, () => {
-  logger.info(`api-gateway listening on port ${port}`);
+startServiceServer(app, {
+  serviceName: 'api-gateway',
+  port,
+  logger,
 });
