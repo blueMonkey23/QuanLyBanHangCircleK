@@ -78,6 +78,11 @@ This file tracks planned stored procedures and mappings to APIs. Update as neede
 - Action: join TaiKhoan + NhanVien
 - Output: [TaiKhoanDto + NhanVienDto]
 
+### sp_user_get_account_by_id
+- Input: maTaiKhoan
+- Action: get one active TaiKhoan + NhanVien
+- Output: TaiKhoanDto + NhanVienDto
+
 ### sp_user_list_roles
 - Input: none
 - Action: select VaiTro
@@ -94,6 +99,7 @@ This file tracks planned stored procedures and mappings to APIs. Update as neede
 - PUT /api/v1/users/accounts/{maTaiKhoan}/password -> sp_user_change_password
 - DELETE /api/v1/users/accounts/{maTaiKhoan} -> sp_user_soft_delete_account
 - GET /api/v1/users/accounts -> sp_user_get_accounts
+- GET /api/v1/users/accounts/{maTaiKhoan} -> sp_user_get_account_by_id
 - GET /api/v1/users/roles -> sp_user_list_roles
 - GET /api/v1/users/permissions -> sp_user_list_permissions
 

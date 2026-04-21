@@ -25,7 +25,6 @@ Tai lieu nay dac ta API theo mo hinh Microservices giao tiep qua REST API Gatewa
 	"TaiKhoanDto": {
 		"maTaiKhoan": 101,
 		"username": "nv.quay01",
-		"password": "<hashed>",
 		"maVaiTro": 2,
 		"isDeleted": false
 	},
@@ -138,6 +137,7 @@ Prefix service: `/users`
 | PUT | `/api/v1/users/accounts/{maTaiKhoan}/password` | Doi mat khau | `{ "oldPassword": "...", "newPassword": "..." }` | `{ "message": "Password changed" }` |
 | DELETE | `/api/v1/users/accounts/{maTaiKhoan}` | Xoa mem tai khoan (`IsDeleted=true`) | Khong co | `{ "message": "Deleted" }` |
 | GET | `/api/v1/users/accounts` | Danh sach tai khoan | Query: `maVaiTro`, `isDeleted` | `[TaiKhoanDto + NhanVienDto]` |
+| GET | `/api/v1/users/accounts/{maTaiKhoan}` | Chi tiet tai khoan dang hoat dong | Khong co | `TaiKhoanDto + NhanVienDto` |
 | GET | `/api/v1/users/roles` | Danh sach vai tro | Khong co | `[VaiTroDto]` |
 | GET | `/api/v1/users/permissions` | Danh sach quyen | Khong co | `[QuyenDto]` |
 

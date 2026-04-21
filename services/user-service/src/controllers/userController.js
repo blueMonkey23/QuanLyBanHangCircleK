@@ -95,6 +95,21 @@ async function listAccounts(req, res, next) {
   }
 }
 
+async function getAccountById(req, res, next) {
+  try {
+    const maTaiKhoan = parseRequiredInt(req.params.maTaiKhoan, 'maTaiKhoan');
+    const account = await repository.getAccountById(maTaiKhoan);
+
+    if (!account) {
+      throw new AppError('NOT_FOUND', 'Account not found', 404);
+    }
+
+    res.json(account);
+  } catch (error) {
+    next(normalizeDatabaseError(error));
+  }
+}
+
 async function createAccount(req, res, next) {
   try {
     requireBodyFields(req.body, ['username', 'password', 'maVaiTro', 'hoTen', 'dienThoai']);
@@ -179,6 +194,7 @@ async function listPermissions(req, res, next) {
 
 module.exports = {
   listAccounts,
+  getAccountById,
   createAccount,
   updateAccount,
   updatePassword,

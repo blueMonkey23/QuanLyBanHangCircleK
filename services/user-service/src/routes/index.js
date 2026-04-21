@@ -2,6 +2,7 @@ const express = require('express');
 const { health } = require('../controllers/healthController');
 const {
   listAccounts,
+  getAccountById,
   createAccount,
   updateAccount,
   updatePassword,
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.get('/health', health);
 router.get('/users/accounts', listAccounts);
+router.get('/users/accounts/:maTaiKhoan', getAccountById);
 router.post('/users/accounts', createAccount);
 router.put('/users/accounts/:maTaiKhoan', updateAccount);
 router.put('/users/accounts/:maTaiKhoan/password', updatePassword);

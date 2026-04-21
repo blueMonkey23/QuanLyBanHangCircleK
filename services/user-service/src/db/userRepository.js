@@ -41,7 +41,6 @@ function mapAccountRow(row) {
   return {
     maTaiKhoan: toNumberOrNull(row.MaTaiKhoan),
     username: row.Username,
-    password: row.Password,
     maVaiTro: toNumberOrNull(row.MaVaiTro),
     isDeleted: toBooleanFlag(row.IsDeleted),
     maNhanVien: toNumberOrNull(row.MaNhanVien),
@@ -120,6 +119,12 @@ async function listAccounts(filters) {
   return (resultSets[0] || []).map(mapAccountRow);
 }
 
+async function getAccountById(maTaiKhoan) {
+  const rows = await callProcedure('sp_user_get_account_by_id', [maTaiKhoan]);
+  const resultSets = getResultSets(rows);
+  return mapAccountRow(resultSets[0]?.[0]) || null;
+}
+
 async function listRoles() {
   const rows = await callProcedure('sp_user_list_roles', []);
   const resultSets = getResultSets(rows);
@@ -138,6 +143,7 @@ module.exports = {
   changePassword,
   softDeleteAccount,
   listAccounts,
+  getAccountById,
   listRoles,
   listPermissions,
 };

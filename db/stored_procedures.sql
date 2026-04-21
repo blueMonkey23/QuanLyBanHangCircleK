@@ -350,12 +350,25 @@ CREATE PROCEDURE sp_user_get_accounts(
   IN p_isDeleted TINYINT
 )
 BEGIN
-  SELECT tk.MaTaiKhoan, tk.Username, tk.Password, tk.MaVaiTro, tk.IsDeleted,
+  SELECT tk.MaTaiKhoan, tk.Username, tk.MaVaiTro, tk.IsDeleted,
          nv.MaNhanVien, nv.HoTen, nv.DienThoai, nv.MaTaiKhoan AS NhanVien_MaTaiKhoan, nv.IsDeleted AS NhanVien_IsDeleted
   FROM TaiKhoan tk
   JOIN NhanVien nv ON nv.MaTaiKhoan = tk.MaTaiKhoan
   WHERE (p_maVaiTro IS NULL OR tk.MaVaiTro = p_maVaiTro)
     AND (p_isDeleted IS NULL OR tk.IsDeleted = p_isDeleted);
+END $$
+
+DROP PROCEDURE IF EXISTS sp_user_get_account_by_id $$
+CREATE PROCEDURE sp_user_get_account_by_id(
+  IN p_maTaiKhoan INT
+)
+BEGIN
+  SELECT tk.MaTaiKhoan, tk.Username, tk.MaVaiTro, tk.IsDeleted,
+         nv.MaNhanVien, nv.HoTen, nv.DienThoai, nv.MaTaiKhoan AS NhanVien_MaTaiKhoan, nv.IsDeleted AS NhanVien_IsDeleted
+  FROM TaiKhoan tk
+  JOIN NhanVien nv ON nv.MaTaiKhoan = tk.MaTaiKhoan
+  WHERE tk.MaTaiKhoan = p_maTaiKhoan
+    AND tk.IsDeleted = 0;
 END $$
 
 DROP PROCEDURE IF EXISTS sp_user_list_roles $$
