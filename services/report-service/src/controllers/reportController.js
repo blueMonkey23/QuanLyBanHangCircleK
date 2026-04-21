@@ -1,5 +1,5 @@
 const { AppError } = require('circlek-core');
-const repository = require('../db/reportRepository');
+const repository = require('../db/ReportDataAccess');
 
 function parseOptionalDateTime(value, field) {
   if (value === undefined || value === null || value === '') {

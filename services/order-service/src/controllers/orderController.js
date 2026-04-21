@@ -1,5 +1,5 @@
 const { AppError } = require('circlek-core');
-const repository = require('../db/orderRepository');
+const repository = require('../db/OrderDataAccess');
 
 function parseRequiredInt(value, field) {
   const parsed = Number(value);

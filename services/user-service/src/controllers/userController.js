@@ -1,6 +1,6 @@
 const { createHash } = require('crypto');
 const { AppError } = require('circlek-core');
-const repository = require('../db/userRepository');
+const repository = require('../db/UserDataAccess');
 
 function parseRequiredInt(value, field) {
   const parsed = Number(value);

@@ -1,5 +1,5 @@
 const { AppError } = require('circlek-core');
-const repository = require('../db/productRepository');
+const repository = require('../db/ProductDataAccess');
 
 function parseOptionalInt(value, field) {
   if (value === undefined || value === null || value === '') {
