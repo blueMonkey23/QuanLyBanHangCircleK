@@ -1,4 +1,8 @@
 const { getPool } = require('./pool');
+const {
+  toNumberOrNull,
+  toDateOnlyValue,
+} = require('circlek-core');
 
 function getResultSets(rows) {
   if (!Array.isArray(rows)) {
@@ -16,6 +20,43 @@ async function callProcedure(name, params) {
   return rows;
 }
 
+function mapRevenueRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    period: row.period instanceof Date ? toDateOnlyValue(row.period) : String(row.period),
+    tongDoanhThu: toNumberOrNull(row.tongDoanhThu) || 0,
+  };
+}
+
+function mapTopProductRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maSanPham: toNumberOrNull(row.maSanPham),
+    tenSanPham: row.tenSanPham,
+    tongSoLuongBan: toNumberOrNull(row.tongSoLuongBan) || 0,
+  };
+}
+
+function mapInvoiceSummaryRow(row) {
+  if (!row) {
+    return {
+      soHoaDon: 0,
+      tongDoanhThu: 0,
+    };
+  }
+
+  return {
+    soHoaDon: toNumberOrNull(row.soHoaDon) || 0,
+    tongDoanhThu: toNumberOrNull(row.tongDoanhThu) || 0,
+  };
+}
+
 async function getRevenueReport(filters) {
   const rows = await callProcedure('sp_report_revenue', [
     filters.fromDate,
@@ -23,7 +64,7 @@ async function getRevenueReport(filters) {
     filters.groupBy,
   ]);
   const resultSets = getResultSets(rows);
-  return resultSets[0] || [];
+  return (resultSets[0] || []).map(mapRevenueRow);
 }
 
 async function getTopProductsReport(filters) {
@@ -33,7 +74,7 @@ async function getTopProductsReport(filters) {
     filters.limit,
   ]);
   const resultSets = getResultSets(rows);
-  return resultSets[0] || [];
+  return (resultSets[0] || []).map(mapTopProductRow);
 }
 
 async function getInvoiceSummary(filters) {
@@ -42,7 +83,7 @@ async function getInvoiceSummary(filters) {
     filters.toDate,
   ]);
   const resultSets = getResultSets(rows);
-  return resultSets[0]?.[0] || { soHoaDon: 0, tongDoanhThu: 0 };
+  return mapInvoiceSummaryRow(resultSets[0]?.[0]);
 }
 
 module.exports = {

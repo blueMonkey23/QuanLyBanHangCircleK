@@ -56,6 +56,27 @@ function requireBodyFields(body, fields) {
   }
 }
 
+function parseRequiredText(value, field) {
+  const parsed = String(value || '').trim();
+  if (!parsed) {
+    throw new AppError('VALIDATION_ERROR', `${field} is required`, 400);
+  }
+
+  return parsed;
+}
+
+function normalizeDatabaseError(error) {
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  if (error && error.code === 'ER_NO_REFERENCED_ROW_2') {
+    return new AppError('VALIDATION_ERROR', 'Referenced record does not exist', 400);
+  }
+
+  return error;
+}
+
 async function listProducts(req, res, next) {
   try {
     const maDanhMuc = parseOptionalInt(req.query.maDanhMuc, 'maDanhMuc');
@@ -63,7 +84,7 @@ async function listProducts(req, res, next) {
     const products = await repository.getProducts({ maDanhMuc, isDeleted });
     res.json(products);
   } catch (error) {
-    next(error);
+    next(normalizeDatabaseError(error));
   }
 }
 
@@ -76,7 +97,7 @@ async function getProductById(req, res, next) {
     }
     res.json(product);
   } catch (error) {
-    next(error);
+    next(normalizeDatabaseError(error));
   }
 }
 
@@ -85,7 +106,7 @@ async function createProduct(req, res, next) {
     requireBodyFields(req.body, ['tenSanPham', 'gia', 'soLuong', 'maDanhMuc', 'maNCC']);
 
     const data = {
-      tenSanPham: String(req.body.tenSanPham).trim(),
+      tenSanPham: parseRequiredText(req.body.tenSanPham, 'tenSanPham'),
       gia: parseMoney(req.body.gia, 'gia'),
       soLuong: parseRequiredInt(req.body.soLuong, 'soLuong'),
       maDanhMuc: parseRequiredInt(req.body.maDanhMuc, 'maDanhMuc'),
@@ -95,7 +116,7 @@ async function createProduct(req, res, next) {
     const product = await repository.createProduct(data);
     res.status(201).json(product || { message: 'Created' });
   } catch (error) {
-    next(error);
+    next(normalizeDatabaseError(error));
   }
 }
 
@@ -105,7 +126,7 @@ async function updateProduct(req, res, next) {
 
     const maSanPham = parseRequiredInt(req.params.maSanPham, 'maSanPham');
     const data = {
-      tenSanPham: String(req.body.tenSanPham).trim(),
+      tenSanPham: parseRequiredText(req.body.tenSanPham, 'tenSanPham'),
       gia: parseMoney(req.body.gia, 'gia'),
       soLuong: parseRequiredInt(req.body.soLuong, 'soLuong'),
       maDanhMuc: parseRequiredInt(req.body.maDanhMuc, 'maDanhMuc'),
@@ -115,7 +136,7 @@ async function updateProduct(req, res, next) {
     const result = await repository.updateProduct(maSanPham, data);
     res.json(result);
   } catch (error) {
-    next(error);
+    next(normalizeDatabaseError(error));
   }
 }
 
@@ -125,7 +146,7 @@ async function deleteProduct(req, res, next) {
     const result = await repository.softDeleteProduct(maSanPham);
     res.json(result);
   } catch (error) {
-    next(error);
+    next(normalizeDatabaseError(error));
   }
 }
 
@@ -135,7 +156,7 @@ async function listCategories(req, res, next) {
     const categories = await repository.listCategories(isDeleted);
     res.json(categories);
   } catch (error) {
-    next(error);
+    next(normalizeDatabaseError(error));
   }
 }
 
@@ -145,7 +166,7 @@ async function listSuppliers(req, res, next) {
     const suppliers = await repository.listSuppliers(isDeleted);
     res.json(suppliers);
   } catch (error) {
-    next(error);
+    next(normalizeDatabaseError(error));
   }
 }
 

@@ -1,11 +1,57 @@
 const { getPool } = require('./pool');
+const {
+  toNumberOrNull,
+  toBooleanFlag,
+  mapMessageRow,
+} = require('circlek-core');
 
-function firstResult(rows) {
-  if (Array.isArray(rows) && Array.isArray(rows[0])) {
-    return rows[0];
+function getResultSets(rows) {
+  if (!Array.isArray(rows)) {
+    return [];
   }
 
-  return rows;
+  return rows.filter(Array.isArray);
+}
+
+function mapProductRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maSanPham: toNumberOrNull(row.MaSanPham),
+    tenSanPham: row.TenSanPham,
+    gia: toNumberOrNull(row.Gia),
+    soLuong: toNumberOrNull(row.SoLuong),
+    maDanhMuc: toNumberOrNull(row.MaDanhMuc),
+    maNCC: toNumberOrNull(row.MaNCC),
+    isDeleted: toBooleanFlag(row.IsDeleted),
+  };
+}
+
+function mapCategoryRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maDanhMuc: toNumberOrNull(row.MaDanhMuc),
+    tenDanhMuc: row.TenDanhMuc,
+    isDeleted: toBooleanFlag(row.IsDeleted),
+  };
+}
+
+function mapSupplierRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maNCC: toNumberOrNull(row.MaNCC),
+    tenCongTy: row.TenCongTy,
+    dienThoai: row.DienThoai,
+    isDeleted: toBooleanFlag(row.IsDeleted),
+  };
 }
 
 async function callProcedure(name, params) {
@@ -21,13 +67,14 @@ async function getProducts(filters) {
     filters.maDanhMuc,
     filters.isDeleted,
   ]);
-  return firstResult(rows);
+  const resultSets = getResultSets(rows);
+  return (resultSets[0] || []).map(mapProductRow);
 }
 
 async function getProductById(maSanPham) {
   const rows = await callProcedure('sp_product_get_by_id', [maSanPham]);
-  const result = firstResult(rows);
-  return result[0] || null;
+  const resultSets = getResultSets(rows);
+  return mapProductRow(resultSets[0]?.[0]) || null;
 }
 
 async function createProduct(data) {
@@ -38,8 +85,8 @@ async function createProduct(data) {
     data.maDanhMuc,
     data.maNCC,
   ]);
-  const result = firstResult(rows);
-  return result[0] || null;
+  const resultSets = getResultSets(rows);
+  return mapProductRow(resultSets[0]?.[0]) || null;
 }
 
 async function updateProduct(maSanPham, data) {
@@ -51,24 +98,26 @@ async function updateProduct(maSanPham, data) {
     data.maDanhMuc,
     data.maNCC,
   ]);
-  const result = firstResult(rows);
-  return result[0] || { message: 'Updated' };
+  const resultSets = getResultSets(rows);
+  return mapMessageRow(resultSets[0]?.[0], 'Updated');
 }
 
 async function softDeleteProduct(maSanPham) {
   const rows = await callProcedure('sp_product_soft_delete', [maSanPham]);
-  const result = firstResult(rows);
-  return result[0] || { message: 'Deleted' };
+  const resultSets = getResultSets(rows);
+  return mapMessageRow(resultSets[0]?.[0], 'Deleted');
 }
 
 async function listCategories(isDeleted) {
   const rows = await callProcedure('sp_category_list', [isDeleted]);
-  return firstResult(rows);
+  const resultSets = getResultSets(rows);
+  return (resultSets[0] || []).map(mapCategoryRow);
 }
 
 async function listSuppliers(isDeleted) {
   const rows = await callProcedure('sp_supplier_list', [isDeleted]);
-  return firstResult(rows);
+  const resultSets = getResultSets(rows);
+  return (resultSets[0] || []).map(mapSupplierRow);
 }
 
 module.exports = {

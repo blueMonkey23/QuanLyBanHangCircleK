@@ -1,4 +1,8 @@
 const { getPool } = require('./pool');
+const {
+  toNumberOrNull,
+  toDateTimeValue,
+} = require('circlek-core');
 
 function getResultSets(rows) {
   if (!Array.isArray(rows)) {
@@ -16,6 +20,36 @@ async function callProcedure(name, params) {
   return rows;
 }
 
+function mapInvoiceRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maHoaDon: toNumberOrNull(row.MaHoaDon),
+    maNhanVien: toNumberOrNull(row.MaNhanVien),
+    ngayTao: toDateTimeValue(row.NgayTao),
+    tongTien: toNumberOrNull(row.TongTien),
+    phuongThucThanhToan: row.PhuongThucThanhToan,
+  };
+}
+
+function mapOrderDetailRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maChiTiet: toNumberOrNull(row.MaChiTiet),
+    maHoaDon: toNumberOrNull(row.MaHoaDon),
+    maSanPham: toNumberOrNull(row.MaSanPham),
+    tenSanPham: row.TenSanPham,
+    soLuong: toNumberOrNull(row.SoLuong),
+    donGia: toNumberOrNull(row.DonGia),
+    giamGia: toNumberOrNull(row.GiamGia),
+  };
+}
+
 async function createOrder(data) {
   const rows = await callProcedure('sp_order_create', [
     data.maNhanVien,
@@ -25,8 +59,8 @@ async function createOrder(data) {
   const resultSets = getResultSets(rows);
 
   return {
-    hoaDon: resultSets[0]?.[0] || null,
-    chiTiet: resultSets[1] || [],
+    hoaDon: mapInvoiceRow(resultSets[0]?.[0]),
+    chiTiet: (resultSets[1] || []).map(mapOrderDetailRow),
     message: 'Created',
   };
 }
@@ -60,7 +94,7 @@ async function listOrders(filters) {
     filters.maNhanVien,
   ]);
   const resultSets = getResultSets(rows);
-  return resultSets[0] || [];
+  return (resultSets[0] || []).map(mapInvoiceRow);
 }
 
 async function getOrderDetail(maHoaDon) {
@@ -68,8 +102,8 @@ async function getOrderDetail(maHoaDon) {
   const resultSets = getResultSets(rows);
 
   return {
-    hoaDon: resultSets[0]?.[0] || null,
-    chiTiet: resultSets[1] || [],
+    hoaDon: mapInvoiceRow(resultSets[0]?.[0]),
+    chiTiet: (resultSets[1] || []).map(mapOrderDetailRow),
   };
 }
 
