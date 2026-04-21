@@ -7,12 +7,14 @@
 
 CREATE TABLE IF NOT EXISTS VaiTro (
   MaVaiTro INT AUTO_INCREMENT PRIMARY KEY,
-  TenVaiTro NVARCHAR(100) NOT NULL
+  TenVaiTro NVARCHAR(100) NOT NULL,
+  CONSTRAINT UQ_VaiTro_TenVaiTro UNIQUE (TenVaiTro)
 );
 
 CREATE TABLE IF NOT EXISTS Quyen (
   MaQuyen INT AUTO_INCREMENT PRIMARY KEY,
-  TenQuyen NVARCHAR(100) NOT NULL
+  TenQuyen NVARCHAR(100) NOT NULL,
+  CONSTRAINT UQ_Quyen_TenQuyen UNIQUE (TenQuyen)
 );
 
 CREATE TABLE IF NOT EXISTS VaiTro_Quyen (
@@ -28,7 +30,9 @@ CREATE TABLE IF NOT EXISTS TaiKhoan (
   Username VARCHAR(100) NOT NULL,
   Password VARCHAR(255) NOT NULL,
   MaVaiTro INT NOT NULL,
-  IsDeleted BIT NOT NULL DEFAULT 0,
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT UQ_TaiKhoan_Username UNIQUE (Username),
+  CONSTRAINT CHK_TaiKhoan_IsDeleted CHECK (IsDeleted IN (0, 1)),
   CONSTRAINT FK_TaiKhoan_VaiTro FOREIGN KEY (MaVaiTro) REFERENCES VaiTro(MaVaiTro)
 );
 
@@ -37,21 +41,25 @@ CREATE TABLE IF NOT EXISTS NhanVien (
   HoTen NVARCHAR(255) NOT NULL,
   DienThoai VARCHAR(20) NOT NULL,
   MaTaiKhoan INT NOT NULL,
-  IsDeleted BIT NOT NULL DEFAULT 0,
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT UQ_NhanVien_MaTaiKhoan UNIQUE (MaTaiKhoan),
+  CONSTRAINT CHK_NhanVien_IsDeleted CHECK (IsDeleted IN (0, 1)),
   CONSTRAINT FK_NhanVien_TaiKhoan FOREIGN KEY (MaTaiKhoan) REFERENCES TaiKhoan(MaTaiKhoan)
 );
 
 CREATE TABLE IF NOT EXISTS DanhMucSanPham (
   MaDanhMuc INT AUTO_INCREMENT PRIMARY KEY,
   TenDanhMuc NVARCHAR(255) NOT NULL,
-  IsDeleted BIT NOT NULL DEFAULT 0
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT CHK_DanhMucSanPham_IsDeleted CHECK (IsDeleted IN (0, 1))
 );
 
 CREATE TABLE IF NOT EXISTS NhaCungCap (
   MaNCC INT AUTO_INCREMENT PRIMARY KEY,
   TenCongTy NVARCHAR(255) NOT NULL,
   DienThoai VARCHAR(20) NOT NULL,
-  IsDeleted BIT NOT NULL DEFAULT 0
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT CHK_NhaCungCap_IsDeleted CHECK (IsDeleted IN (0, 1))
 );
 
 CREATE TABLE IF NOT EXISTS SanPham (
@@ -61,7 +69,10 @@ CREATE TABLE IF NOT EXISTS SanPham (
   SoLuong INT NOT NULL,
   MaDanhMuc INT NOT NULL,
   MaNCC INT NOT NULL,
-  IsDeleted BIT NOT NULL DEFAULT 0,
+  IsDeleted TINYINT(1) NOT NULL DEFAULT 0,
+  CONSTRAINT CHK_SanPham_Gia CHECK (Gia >= 0),
+  CONSTRAINT CHK_SanPham_SoLuong CHECK (SoLuong >= 0),
+  CONSTRAINT CHK_SanPham_IsDeleted CHECK (IsDeleted IN (0, 1)),
   CONSTRAINT FK_SanPham_DanhMuc FOREIGN KEY (MaDanhMuc) REFERENCES DanhMucSanPham(MaDanhMuc),
   CONSTRAINT FK_SanPham_NhaCungCap FOREIGN KEY (MaNCC) REFERENCES NhaCungCap(MaNCC)
 );
@@ -72,6 +83,9 @@ CREATE TABLE IF NOT EXISTS TBGiamGia (
   PhanTramGiam INT NOT NULL,
   NgayTao DATE NOT NULL,
   NgayKetThuc DATE NOT NULL,
+  INDEX IDX_TBGiamGia_MaSanPham_Ngay (MaSanPham, NgayTao, NgayKetThuc),
+  CONSTRAINT CHK_TBGiamGia_PhanTramGiam CHECK (PhanTramGiam BETWEEN 0 AND 100),
+  CONSTRAINT CHK_TBGiamGia_Ngay CHECK (NgayKetThuc >= NgayTao),
   CONSTRAINT FK_TBGiamGia_SanPham FOREIGN KEY (MaSanPham) REFERENCES SanPham(MaSanPham)
 );
 
@@ -81,6 +95,8 @@ CREATE TABLE IF NOT EXISTS HoaDon (
   NgayTao DATETIME NOT NULL,
   TongTien DECIMAL(18,2) NOT NULL,
   PhuongThucThanhToan NVARCHAR(50) NOT NULL,
+  INDEX IDX_HoaDon_NgayTao (NgayTao),
+  CONSTRAINT CHK_HoaDon_TongTien CHECK (TongTien >= 0),
   CONSTRAINT FK_HoaDon_NhanVien FOREIGN KEY (MaNhanVien) REFERENCES NhanVien(MaNhanVien)
 );
 
@@ -92,6 +108,9 @@ CREATE TABLE IF NOT EXISTS ChiTietHoaDon (
   SoLuong INT NOT NULL,
   DonGia DECIMAL(18,2) NOT NULL,
   GiamGia DECIMAL(18,2) NOT NULL DEFAULT 0,
+  CONSTRAINT CHK_ChiTietHoaDon_SoLuong CHECK (SoLuong > 0),
+  CONSTRAINT CHK_ChiTietHoaDon_DonGia CHECK (DonGia >= 0),
+  CONSTRAINT CHK_ChiTietHoaDon_GiamGia CHECK (GiamGia >= 0),
   CONSTRAINT FK_ChiTietHoaDon_HoaDon FOREIGN KEY (MaHoaDon) REFERENCES HoaDon(MaHoaDon),
   CONSTRAINT FK_ChiTietHoaDon_SanPham FOREIGN KEY (MaSanPham) REFERENCES SanPham(MaSanPham)
 );
@@ -153,7 +172,7 @@ END $$
 DROP PROCEDURE IF EXISTS sp_product_get_list $$
 CREATE PROCEDURE sp_product_get_list(
   IN p_maDanhMuc INT,
-  IN p_isDeleted BIT
+  IN p_isDeleted TINYINT
 )
 BEGIN
   SELECT *
@@ -174,7 +193,7 @@ END $$
 
 DROP PROCEDURE IF EXISTS sp_category_list $$
 CREATE PROCEDURE sp_category_list(
-  IN p_isDeleted BIT
+  IN p_isDeleted TINYINT
 )
 BEGIN
   SELECT *
@@ -184,7 +203,7 @@ END $$
 
 DROP PROCEDURE IF EXISTS sp_supplier_list $$
 CREATE PROCEDURE sp_supplier_list(
-  IN p_isDeleted BIT
+  IN p_isDeleted TINYINT
 )
 BEGIN
   SELECT *
@@ -280,7 +299,7 @@ END $$
 DROP PROCEDURE IF EXISTS sp_user_get_accounts $$
 CREATE PROCEDURE sp_user_get_accounts(
   IN p_maVaiTro INT,
-  IN p_isDeleted BIT
+  IN p_isDeleted TINYINT
 )
 BEGIN
   SELECT tk.MaTaiKhoan, tk.Username, tk.Password, tk.MaVaiTro, tk.IsDeleted,
