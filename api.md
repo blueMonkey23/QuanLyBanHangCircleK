@@ -67,6 +67,7 @@ Tai lieu nay dac ta API theo mo hinh Microservices giao tiep qua REST API Gatewa
 	"TBGiamGiaDto": {
 		"maGiamGia": 20,
 		"maSanPham": 1001,
+		"phanTramGiam": 10,
 		"ngayTao": "2026-04-01",
 		"ngayKetThuc": "2026-04-30"
 	},
@@ -84,9 +85,11 @@ Tai lieu nay dac ta API theo mo hinh Microservices giao tiep qua REST API Gatewa
 		"tenSanPham": "Nuoc suoi 500ml",
 		"soLuong": 2,
 		"donGia": 10000,
-		"giamGia": 0
+		"giamGia": 2000
 	}
 }
+
+Ghi chu: `ChiTietHoaDonDto.giamGia` la so tien giam (khong phai phan tram), duoc tinh tu bang `TBGiamGia`.
 ```
 
 ### 2.2 DTO nghiep vu tong hop
@@ -113,13 +116,11 @@ Tai lieu nay dac ta API theo mo hinh Microservices giao tiep qua REST API Gatewa
 		"items": [
 			{
 				"maSanPham": 1001,
-				"soLuong": 2,
-				"giamGia": 0
+				"soLuong": 2
 			},
 			{
 				"maSanPham": 1002,
-				"soLuong": 1,
-				"giamGia": 2000
+				"soLuong": 1
 			}
 		]
 	}
@@ -175,6 +176,8 @@ Prefix service: `/orders`
 5. Tru ton kho trong `SanPham` theo tung item.
 6. `COMMIT` neu thanh cong toan bo, `ROLLBACK` neu bat ky buoc nao that bai.
 
+Giam gia duoc tinh tu bang `TBGiamGia` theo `MaSanPham` va ngay hien tai. API khong truyen truong `giamGia` trong request.
+
 ### 5.2 Vi du request/response tao don
 
 Request:
@@ -184,8 +187,8 @@ Request:
 	"maNhanVien": 10,
 	"phuongThucThanhToan": "TIEN_MAT",
 	"items": [
-		{ "maSanPham": 1001, "soLuong": 2, "giamGia": 0 },
-		{ "maSanPham": 1002, "soLuong": 1, "giamGia": 2000 }
+		{ "maSanPham": 1001, "soLuong": 2 },
+		{ "maSanPham": 1002, "soLuong": 1 }
 	]
 }
 ```
@@ -209,7 +212,7 @@ Response:
 			"tenSanPham": "Nuoc suoi 500ml",
 			"soLuong": 2,
 			"donGia": 10000,
-			"giamGia": 0
+			"giamGia": 2000
 		},
 		{
 			"maChiTiet": 9002,
@@ -218,7 +221,7 @@ Response:
 			"tenSanPham": "Banh snack",
 			"soLuong": 1,
 			"donGia": 17000,
-			"giamGia": 2000
+			"giamGia": 0
 		}
 	],
 	"message": "Created"
