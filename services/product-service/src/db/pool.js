@@ -10,6 +10,14 @@ function requireEnv(name) {
   return value;
 }
 
+function getPassword() {
+  const value = process.env.DB_PASSWORD;
+  if (value === undefined || value === null) {
+    throw new Error('Missing required environment variable: DB_PASSWORD');
+  }
+  return value;
+}
+
 function getPool() {
   if (!pool) {
     const host = requireEnv('DB_HOST');
@@ -19,7 +27,7 @@ function getPool() {
     }
 
     const user = requireEnv('DB_USER');
-    const password = requireEnv('DB_PASSWORD');
+    const password = getPassword();
     const database = requireEnv('DB_NAME');
     const useSsl = String(process.env.DB_SSL || '').toLowerCase() === 'true';
 
