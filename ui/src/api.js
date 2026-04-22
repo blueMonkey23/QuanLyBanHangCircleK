@@ -43,7 +43,7 @@ export function readSession() {
     const session = JSON.parse(raw)
     setAuthToken(session?.token || '')
     return session
-  } catch (error) {
+  } catch {
     window.localStorage.removeItem(STORAGE_KEY)
     return null
   }

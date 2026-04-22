@@ -31,10 +31,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    radial-gradient(circle at top left, rgba(44, 134, 255, 0.14), transparent 22%),
-    radial-gradient(circle at bottom right, rgba(255, 99, 119, 0.14), transparent 28%),
-    linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
+  background: var(--app-bg);
 }
 
 body,
