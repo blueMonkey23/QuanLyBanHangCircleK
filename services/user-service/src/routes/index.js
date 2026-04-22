@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireAuth } = require('circlek-core');
+const { requireAuth, requireInternalApiKey } = require('circlek-core');
 const { health } = require('../controllers/healthController');
 const {
   listAccounts,
@@ -22,6 +22,10 @@ const {
   getSystemSettings,
   updateSystemSettings,
 } = require('../controllers/systemSettingsController');
+const {
+  getStaffSnapshot,
+  getCustomerSnapshot,
+} = require('../controllers/internalController');
 
 const router = express.Router();
 
@@ -42,5 +46,7 @@ router.put('/users/customers/:maKhachHang', updateCustomer);
 router.delete('/users/customers/:maKhachHang', deleteCustomer);
 router.get('/users/system-settings', getSystemSettings);
 router.put('/users/system-settings', updateSystemSettings);
+router.get('/internal/v1/staff/:maNhanVien/snapshot', requireInternalApiKey, getStaffSnapshot);
+router.get('/internal/v1/customers/:maKhachHang/snapshot', requireInternalApiKey, getCustomerSnapshot);
 
 module.exports = router;

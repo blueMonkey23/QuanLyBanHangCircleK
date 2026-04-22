@@ -21,6 +21,18 @@ function createCustomerCode(id) {
   return `KH${String(id).padStart(3, '0')}`;
 }
 
+function mapCustomerSnapshotRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maKhachHang: toNumberOrNull(row.MaKhachHang),
+    tenKhachHang: row.TenKhachHang,
+    soDienThoai: row.SoDienThoai,
+  };
+}
+
 async function listCustomers(filters) {
   const pool = getPool();
   const keyword = filters.search ? `%${filters.search}%` : null;
@@ -126,9 +138,24 @@ async function softDeleteCustomer(maKhachHang) {
   return mapMessageRow(null, 'Deleted');
 }
 
+async function getCustomerSnapshot(maKhachHang) {
+  const pool = getPool();
+  const [rows] = await pool.query(
+    `SELECT MaKhachHang, TenKhachHang, SoDienThoai
+     FROM KhachHang
+     WHERE MaKhachHang = ?
+       AND IsDeleted = 0
+     LIMIT 1`,
+    [maKhachHang],
+  );
+
+  return mapCustomerSnapshotRow(rows[0]) || null;
+}
+
 module.exports = {
   listCustomers,
   createCustomer,
   updateCustomer,
   softDeleteCustomer,
+  getCustomerSnapshot,
 };

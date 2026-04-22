@@ -2,8 +2,9 @@ const { loadEnv, getServicePort } = require('./config');
 const { createLogger } = require('./logger');
 const { startServiceServer } = require('./server');
 const { AppError, toErrorResponse } = require('./errors');
-const { requestIdMiddleware, notFoundHandler, errorHandler } = require('./middleware');
+const { requestIdMiddleware, accessLogMiddleware, notFoundHandler, errorHandler } = require('./middleware');
 const { signAuthToken, verifyAuthToken, requireAuth, requirePermissions } = require('./auth');
+const { getInternalApiKey, requireInternalApiKey, requestJson } = require('./internal');
 const {
   toNumberOrNull,
   toBooleanFlag,
@@ -23,7 +24,11 @@ module.exports = {
   verifyAuthToken,
   requireAuth,
   requirePermissions,
+  getInternalApiKey,
+  requireInternalApiKey,
+  requestJson,
   requestIdMiddleware,
+  accessLogMiddleware,
   notFoundHandler,
   errorHandler,
   toNumberOrNull,

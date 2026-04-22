@@ -1,0 +1,32 @@
+CREATE TABLE IF NOT EXISTS FactHoaDon (
+  MaHoaDon BIGINT PRIMARY KEY,
+  MaNhanVien INT NOT NULL,
+  TenNhanVienSnapshot VARCHAR(255) NOT NULL,
+  UsernameNhanVienSnapshot VARCHAR(100) NULL,
+  MaKhachHang INT NULL,
+  TenKhachHangSnapshot VARCHAR(255) NULL,
+  NgayTao DATETIME NOT NULL,
+  TongTien DECIMAL(18,2) NOT NULL,
+  PhuongThucThanhToan VARCHAR(50) NOT NULL,
+  INDEX IDX_FactHoaDon_NgayTao (NgayTao)
+);
+
+CREATE TABLE IF NOT EXISTS FactHoaDonItem (
+  MaFactHoaDonItem BIGINT AUTO_INCREMENT PRIMARY KEY,
+  MaHoaDon BIGINT NOT NULL,
+  MaSanPham INT NOT NULL,
+  TenSanPhamSnapshot VARCHAR(255) NOT NULL,
+  SoLuong INT NOT NULL,
+  DonGiaSnapshot DECIMAL(18,2) NOT NULL,
+  PhanTramGiamSnapshot INT NOT NULL DEFAULT 0,
+  GiaSauGiamSnapshot DECIMAL(18,2) NOT NULL,
+  GiamGia DECIMAL(18,2) NOT NULL DEFAULT 0,
+  CONSTRAINT FK_FactHoaDonItem_HoaDon FOREIGN KEY (MaHoaDon) REFERENCES FactHoaDon(MaHoaDon)
+);
+
+CREATE TABLE IF NOT EXISTS ProcessedEvent (
+  EventId VARCHAR(100) PRIMARY KEY,
+  EventType VARCHAR(50) NOT NULL,
+  AggregateId BIGINT NOT NULL,
+  ProcessedAt DATETIME NOT NULL
+);

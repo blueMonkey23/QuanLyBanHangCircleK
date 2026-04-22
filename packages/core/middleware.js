@@ -12,6 +12,23 @@ function requestIdMiddleware(req, res, next) {
   next();
 }
 
+function accessLogMiddleware(req, res, next) {
+  const startedAt = process.hrtime.bigint();
+
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    logger.info('Request completed', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: Number(durationMs.toFixed(1)),
+    });
+  });
+
+  next();
+}
+
 function notFoundHandler(req, res) {
   res.status(404).json({
     code: 'NOT_FOUND',
@@ -38,6 +55,7 @@ function errorHandler(err, req, res, next) {
 
 module.exports = {
   requestIdMiddleware,
+  accessLogMiddleware,
   notFoundHandler,
   errorHandler,
 };
