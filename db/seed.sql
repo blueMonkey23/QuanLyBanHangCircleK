@@ -35,10 +35,35 @@ WHERE NOT EXISTS (
   SELECT 1 FROM Quyen WHERE TenQuyen = 'XEM_BAO_CAO'
 );
 
+INSERT INTO Quyen (TenQuyen)
+SELECT 'QUAN_LY_NGUOI_DUNG'
+WHERE NOT EXISTS (
+  SELECT 1 FROM Quyen WHERE TenQuyen = 'QUAN_LY_NGUOI_DUNG'
+);
+
+INSERT INTO Quyen (TenQuyen)
+SELECT 'QUAN_LY_KHACH_HANG'
+WHERE NOT EXISTS (
+  SELECT 1 FROM Quyen WHERE TenQuyen = 'QUAN_LY_KHACH_HANG'
+);
+
+INSERT INTO Quyen (TenQuyen)
+SELECT 'CAI_DAT_HE_THONG'
+WHERE NOT EXISTS (
+  SELECT 1 FROM Quyen WHERE TenQuyen = 'CAI_DAT_HE_THONG'
+);
+
 INSERT INTO VaiTro_Quyen (MaVaiTro, MaQuyen)
 SELECT vt.MaVaiTro, q.MaQuyen
 FROM VaiTro vt
-JOIN Quyen q ON q.TenQuyen IN ('TAO_HOA_DON', 'QUAN_LY_SAN_PHAM', 'XEM_BAO_CAO')
+JOIN Quyen q ON q.TenQuyen IN (
+  'TAO_HOA_DON',
+  'QUAN_LY_SAN_PHAM',
+  'XEM_BAO_CAO',
+  'QUAN_LY_NGUOI_DUNG',
+  'QUAN_LY_KHACH_HANG',
+  'CAI_DAT_HE_THONG'
+)
 WHERE vt.TenVaiTro = 'Admin'
   AND NOT EXISTS (
     SELECT 1
@@ -50,7 +75,7 @@ WHERE vt.TenVaiTro = 'Admin'
 INSERT INTO VaiTro_Quyen (MaVaiTro, MaQuyen)
 SELECT vt.MaVaiTro, q.MaQuyen
 FROM VaiTro vt
-JOIN Quyen q ON q.TenQuyen = 'TAO_HOA_DON'
+JOIN Quyen q ON q.TenQuyen IN ('TAO_HOA_DON', 'QUAN_LY_KHACH_HANG')
 WHERE vt.TenVaiTro = 'NhanVienBanHang'
   AND NOT EXISTS (
     SELECT 1
@@ -121,6 +146,38 @@ WHERE tk.Username = 'nv.quay01'
   AND NOT EXISTS (
     SELECT 1 FROM NhanVien WHERE MaTaiKhoan = tk.MaTaiKhoan
   );
+
+INSERT INTO KhachHang (MaKhachHangCode, TenKhachHang, SoDienThoai, DiaChi, DiemTichLuy, IsDeleted)
+SELECT 'KH001', 'Nguyen Thi Lan', '0909123456', 'Quan 1, TP.HCM', 120, 0
+WHERE NOT EXISTS (
+  SELECT 1 FROM KhachHang WHERE SoDienThoai = '0909123456'
+);
+
+INSERT INTO KhachHang (MaKhachHangCode, TenKhachHang, SoDienThoai, DiaChi, DiemTichLuy, IsDeleted)
+SELECT 'KH002', 'Tran Minh Khoa', '0933111222', 'Thu Duc, TP.HCM', 55, 0
+WHERE NOT EXISTS (
+  SELECT 1 FROM KhachHang WHERE SoDienThoai = '0933111222'
+);
+
+INSERT INTO KhachHang (MaKhachHangCode, TenKhachHang, SoDienThoai, DiaChi, DiemTichLuy, IsDeleted)
+SELECT 'KH003', 'Le Hoang Anh', '0914008999', 'Go Vap, TP.HCM', 240, 0
+WHERE NOT EXISTS (
+  SELECT 1 FROM KhachHang WHERE SoDienThoai = '0914008999'
+);
+
+INSERT INTO CaiDatHeThong (Id, TenCuaHang, DiaChi, SoDienThoai, Email, NoiDungHoaDon, VatPercent, Logo, UpdatedAt)
+SELECT 1,
+       'Cua Hang Tien Loi ABC',
+       '123 Duong XYZ, Quan 1, TP.HCM',
+       '0912345678',
+       'contact@cuahangtienloi.com',
+       'Cam on quy khach da mua hang!',
+       8.00,
+       'circle-k-wordmark.png',
+       UTC_TIMESTAMP()
+WHERE NOT EXISTS (
+  SELECT 1 FROM CaiDatHeThong WHERE Id = 1
+);
 
 INSERT INTO SanPham (TenSanPham, Gia, SoLuong, MaDanhMuc, MaNCC, IsDeleted)
 SELECT 'Nuoc suoi 500ml', 10000, 118, dm.MaDanhMuc, ncc.MaNCC, 0

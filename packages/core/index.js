@@ -3,6 +3,7 @@ const { createLogger } = require('./logger');
 const { startServiceServer } = require('./server');
 const { AppError, toErrorResponse } = require('./errors');
 const { requestIdMiddleware, notFoundHandler, errorHandler } = require('./middleware');
+const { signAuthToken, verifyAuthToken, requireAuth, requirePermissions } = require('./auth');
 const {
   toNumberOrNull,
   toBooleanFlag,
@@ -18,6 +19,10 @@ module.exports = {
   startServiceServer,
   AppError,
   toErrorResponse,
+  signAuthToken,
+  verifyAuthToken,
+  requireAuth,
+  requirePermissions,
   requestIdMiddleware,
   notFoundHandler,
   errorHandler,

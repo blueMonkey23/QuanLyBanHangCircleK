@@ -37,6 +37,7 @@ function mapAccountRow(row) {
     maNhanVien: toNumberOrNull(row.MaNhanVien),
     hoTen: row.HoTen,
     dienThoai: row.DienThoai,
+    tenVaiTro: row.TenVaiTro,
   };
 }
 
@@ -62,6 +63,36 @@ function mapPermissionRow(row) {
   };
 }
 
+function mapAuthProfile(row, permissions) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maTaiKhoan: toNumberOrNull(row.MaTaiKhoan),
+    username: row.Username,
+    maVaiTro: toNumberOrNull(row.MaVaiTro),
+    tenVaiTro: row.TenVaiTro,
+    maNhanVien: toNumberOrNull(row.MaNhanVien),
+    hoTen: row.HoTen,
+    dienThoai: row.DienThoai,
+    permissions,
+  };
+}
+
+async function getPermissionsForRole(maVaiTro, executor = getPool()) {
+  const [rows] = await executor.query(
+    `SELECT q.MaQuyen, q.TenQuyen
+     FROM VaiTro_Quyen vq
+     JOIN Quyen q ON q.MaQuyen = vq.MaQuyen
+     WHERE vq.MaVaiTro = ?
+     ORDER BY q.TenQuyen ASC`,
+    [maVaiTro],
+  );
+
+  return rows.map(mapPermissionRow);
+}
+
 async function createAccount(data) {
   const pool = getPool();
   const connection = await pool.getConnection();
@@ -71,14 +102,14 @@ async function createAccount(data) {
 
     const [accountResult] = await connection.query(
       'INSERT INTO TaiKhoan (Username, Password, MaVaiTro, IsDeleted) VALUES (?, ?, ?, 0)',
-      [data.username, data.password, data.maVaiTro]
+      [data.username, data.password, data.maVaiTro],
     );
 
     const maTaiKhoan = accountResult.insertId;
 
     const [employeeResult] = await connection.query(
       'INSERT INTO NhanVien (HoTen, DienThoai, MaTaiKhoan, IsDeleted) VALUES (?, ?, ?, 0)',
-      [data.hoTen, data.dienThoai, maTaiKhoan]
+      [data.hoTen, data.dienThoai, maTaiKhoan],
     );
 
     await connection.commit();
@@ -105,7 +136,7 @@ async function updateAccount(maTaiKhoan, data) {
 
     const [accountResult] = await connection.query(
       'UPDATE TaiKhoan SET MaVaiTro = ? WHERE MaTaiKhoan = ? AND IsDeleted = 0',
-      [data.maVaiTro, maTaiKhoan]
+      [data.maVaiTro, maTaiKhoan],
     );
 
     if (!accountResult.affectedRows) {
@@ -114,7 +145,7 @@ async function updateAccount(maTaiKhoan, data) {
 
     const [employeeResult] = await connection.query(
       'UPDATE NhanVien SET HoTen = ?, DienThoai = ? WHERE MaTaiKhoan = ? AND IsDeleted = 0',
-      [data.hoTen, data.dienThoai, maTaiKhoan]
+      [data.hoTen, data.dienThoai, maTaiKhoan],
     );
 
     if (!employeeResult.affectedRows) {
@@ -135,7 +166,7 @@ async function changePassword(maTaiKhoan, data) {
   const pool = getPool();
   const [rows] = await pool.query(
     'SELECT Password FROM TaiKhoan WHERE MaTaiKhoan = ? AND IsDeleted = 0 LIMIT 1',
-    [maTaiKhoan]
+    [maTaiKhoan],
   );
 
   if (rows.length === 0) {
@@ -148,7 +179,7 @@ async function changePassword(maTaiKhoan, data) {
 
   await pool.query(
     'UPDATE TaiKhoan SET Password = ? WHERE MaTaiKhoan = ? AND IsDeleted = 0',
-    [data.newPassword, maTaiKhoan]
+    [data.newPassword, maTaiKhoan],
   );
 
   return mapMessageRow(null, 'Password changed');
@@ -163,7 +194,7 @@ async function softDeleteAccount(maTaiKhoan) {
 
     const [accountResult] = await connection.query(
       'UPDATE TaiKhoan SET IsDeleted = 1 WHERE MaTaiKhoan = ?',
-      [maTaiKhoan]
+      [maTaiKhoan],
     );
 
     if (!accountResult.affectedRows) {
@@ -172,7 +203,7 @@ async function softDeleteAccount(maTaiKhoan) {
 
     const [employeeResult] = await connection.query(
       'UPDATE NhanVien SET IsDeleted = 1 WHERE MaTaiKhoan = ?',
-      [maTaiKhoan]
+      [maTaiKhoan],
     );
 
     if (!employeeResult.affectedRows) {
@@ -194,17 +225,20 @@ async function listAccounts(filters) {
   const [rows] = await pool.query(
     `SELECT tk.MaTaiKhoan, tk.Username, tk.Password, tk.MaVaiTro, tk.IsDeleted,
             nv.MaNhanVien, nv.HoTen, nv.DienThoai, nv.MaTaiKhoan AS NhanVien_MaTaiKhoan,
-            nv.IsDeleted AS NhanVien_IsDeleted
+            nv.IsDeleted AS NhanVien_IsDeleted,
+            vt.TenVaiTro
      FROM TaiKhoan tk
      JOIN NhanVien nv ON nv.MaTaiKhoan = tk.MaTaiKhoan
+     JOIN VaiTro vt ON vt.MaVaiTro = tk.MaVaiTro
      WHERE (? IS NULL OR tk.MaVaiTro = ?)
-       AND (? IS NULL OR tk.IsDeleted = ?)`,
+       AND (? IS NULL OR tk.IsDeleted = ?)
+     ORDER BY tk.MaTaiKhoan DESC`,
     [
       filters.maVaiTro,
       filters.maVaiTro,
       filters.isDeleted,
       filters.isDeleted,
-    ]
+    ],
   );
   return rows.map(mapAccountRow);
 }
@@ -214,27 +248,84 @@ async function getAccountById(maTaiKhoan) {
   const [rows] = await pool.query(
     `SELECT tk.MaTaiKhoan, tk.Username, tk.Password, tk.MaVaiTro, tk.IsDeleted,
             nv.MaNhanVien, nv.HoTen, nv.DienThoai, nv.MaTaiKhoan AS NhanVien_MaTaiKhoan,
-            nv.IsDeleted AS NhanVien_IsDeleted
+            nv.IsDeleted AS NhanVien_IsDeleted,
+            vt.TenVaiTro
      FROM TaiKhoan tk
      JOIN NhanVien nv ON nv.MaTaiKhoan = tk.MaTaiKhoan
+     JOIN VaiTro vt ON vt.MaVaiTro = tk.MaVaiTro
      WHERE tk.MaTaiKhoan = ?
        AND tk.IsDeleted = 0
        AND nv.IsDeleted = 0
      LIMIT 1`,
-    [maTaiKhoan]
+    [maTaiKhoan],
   );
   return mapAccountRow(rows[0]) || null;
 }
 
+async function findAccountForLogin(username) {
+  const pool = getPool();
+  const [rows] = await pool.query(
+    `SELECT tk.MaTaiKhoan, tk.Username, tk.Password, tk.MaVaiTro,
+            nv.MaNhanVien, nv.HoTen, nv.DienThoai,
+            vt.TenVaiTro
+     FROM TaiKhoan tk
+     JOIN NhanVien nv ON nv.MaTaiKhoan = tk.MaTaiKhoan
+     JOIN VaiTro vt ON vt.MaVaiTro = tk.MaVaiTro
+     WHERE tk.Username = ?
+       AND tk.IsDeleted = 0
+       AND nv.IsDeleted = 0
+     LIMIT 1`,
+    [username],
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const row = rows[0];
+  const permissions = await getPermissionsForRole(row.MaVaiTro, pool);
+
+  return {
+    ...mapAuthProfile(row, permissions),
+    passwordHash: row.Password,
+  };
+}
+
+async function getAuthProfileById(maTaiKhoan) {
+  const pool = getPool();
+  const [rows] = await pool.query(
+    `SELECT tk.MaTaiKhoan, tk.Username, tk.MaVaiTro,
+            nv.MaNhanVien, nv.HoTen, nv.DienThoai,
+            vt.TenVaiTro
+     FROM TaiKhoan tk
+     JOIN NhanVien nv ON nv.MaTaiKhoan = tk.MaTaiKhoan
+     JOIN VaiTro vt ON vt.MaVaiTro = tk.MaVaiTro
+     WHERE tk.MaTaiKhoan = ?
+       AND tk.IsDeleted = 0
+       AND nv.IsDeleted = 0
+     LIMIT 1`,
+    [maTaiKhoan],
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const row = rows[0];
+  const permissions = await getPermissionsForRole(row.MaVaiTro, pool);
+
+  return mapAuthProfile(row, permissions);
+}
+
 async function listRoles() {
   const pool = getPool();
-  const [rows] = await pool.query('SELECT * FROM VaiTro');
+  const [rows] = await pool.query('SELECT * FROM VaiTro ORDER BY MaVaiTro ASC');
   return rows.map(mapRoleRow);
 }
 
 async function listPermissions() {
   const pool = getPool();
-  const [rows] = await pool.query('SELECT * FROM Quyen');
+  const [rows] = await pool.query('SELECT * FROM Quyen ORDER BY MaQuyen ASC');
   return rows.map(mapPermissionRow);
 }
 
@@ -245,6 +336,8 @@ module.exports = {
   softDeleteAccount,
   listAccounts,
   getAccountById,
+  findAccountForLogin,
+  getAuthProfileById,
   listRoles,
   listPermissions,
 };

@@ -11,8 +11,8 @@ Tai lieu nay dac ta API theo mo hinh Microservices giao tiep qua REST API Gatewa
 
 - Base URL qua API Gateway: `/api/v1`
 - Kien truc: cac service doc lap giao tiep REST qua Gateway.
-- CSDL bam sat muc vat ly (4.6), chi su dung cac bang: `NhanVien`, `TaiKhoan`, `SanPham`, `HoaDon`, `ChiTietHoaDon`, `DanhMucSanPham`, `NhaCungCap`, `VaiTro`, `Quyen`, `TBGiamGia`.
-- KHONG co bang/doi tuong khach hang. Hoa don chi gan voi `MaNhanVien`.
+- CSDL dang dung shared database, cac service dung chung schema.
+- Cac bang chinh: `NhanVien`, `TaiKhoan`, `KhachHang`, `CaiDatHeThong`, `SanPham`, `HoaDon`, `ChiTietHoaDon`, `DanhMucSanPham`, `NhaCungCap`, `VaiTro`, `Quyen`, `TBGiamGia`.
 - Dinh dang thoi gian: ISO-8601, vi du `2026-04-21T10:30:00Z`.
 - ID la so nguyen duong (`int`).
 
@@ -33,6 +33,15 @@ Tai lieu nay dac ta API theo mo hinh Microservices giao tiep qua REST API Gatewa
 		"hoTen": "Tran Van A",
 		"dienThoai": "0988123123",
 		"maTaiKhoan": 101,
+		"isDeleted": false
+	},
+	"KhachHangDto": {
+		"maKhachHang": 1,
+		"maKhachHangCode": "KH001",
+		"tenKhachHang": "Nguyen Thi Lan",
+		"soDienThoai": "0909123456",
+		"diaChi": "Quan 1, TP.HCM",
+		"diemTichLuy": 120,
 		"isDeleted": false
 	},
 	"VaiTroDto": {
@@ -85,6 +94,15 @@ Tai lieu nay dac ta API theo mo hinh Microservices giao tiep qua REST API Gatewa
 		"soLuong": 2,
 		"donGia": 10000,
 		"giamGia": 2000
+	},
+	"CaiDatHeThongDto": {
+		"tenCuaHang": "Cua Hang Tien Loi ABC",
+		"diaChi": "123 Duong XYZ, Quan 1, TP.HCM",
+		"soDienThoai": "0912345678",
+		"email": "contact@cuahangtienloi.com",
+		"noiDungHoaDon": "Cam on quy khach da mua hang!",
+		"vatPercent": 8,
+		"logo": "circle-k-wordmark.png"
 	}
 }
 
@@ -109,6 +127,17 @@ Ghi chu: `ChiTietHoaDonDto.giamGia` la so tien giam (khong phai phan tram), duoc
 		"maDanhMuc": 1,
 		"maNCC": 1
 	},
+	"LoginRequest": {
+		"username": "admin.circlek",
+		"password": "123456"
+	},
+	"CreateCustomerRequest": {
+		"maKhachHangCode": "KH001",
+		"tenKhachHang": "Nguyen Thi Lan",
+		"soDienThoai": "0909123456",
+		"diaChi": "Quan 1, TP.HCM",
+		"diemTichLuy": 120
+	},
 	"CreateOrderRequest": {
 		"maNhanVien": 10,
 		"phuongThucThanhToan": "TIEN_MAT",
@@ -132,6 +161,8 @@ Prefix service: `/users`
 
 | Method | Endpoint | Mo ta | Input JSON | Output JSON |
 | --- | --- | --- | --- | --- |
+| POST | `/api/v1/users/auth/login` | Dang nhap, tra token va profile | `LoginRequest` | `{ "token": "...", "user": { ... } }` |
+| GET | `/api/v1/users/auth/me` | Thong tin tai khoan hien tai | Header `Authorization` | `{ "maTaiKhoan": int, "permissions": [...] }` |
 | POST | `/api/v1/users/accounts` | Tao tai khoan + nhan vien | `CreateAccountRequest` | `{ "maTaiKhoan": int, "maNhanVien": int, "message": "Created" }` |
 | PUT | `/api/v1/users/accounts/{maTaiKhoan}` | Sua thong tin tai khoan/nhan vien | `{ "maVaiTro": int, "hoTen": "...", "dienThoai": "..." }` | `{ "message": "Updated" }` |
 | PUT | `/api/v1/users/accounts/{maTaiKhoan}/password` | Doi mat khau | `{ "oldPassword": "...", "newPassword": "..." }` | `{ "message": "Password changed" }` |
@@ -140,6 +171,12 @@ Prefix service: `/users`
 | GET | `/api/v1/users/accounts/{maTaiKhoan}` | Chi tiet tai khoan dang hoat dong | Khong co | `TaiKhoanDto + NhanVienDto` |
 | GET | `/api/v1/users/roles` | Danh sach vai tro | Khong co | `[VaiTroDto]` |
 | GET | `/api/v1/users/permissions` | Danh sach quyen | Khong co | `[QuyenDto]` |
+| GET | `/api/v1/users/customers` | Danh sach khach hang | Query: `search`, `isDeleted` | `[KhachHangDto]` |
+| POST | `/api/v1/users/customers` | Tao khach hang | `CreateCustomerRequest` | `KhachHangDto` |
+| PUT | `/api/v1/users/customers/{maKhachHang}` | Cap nhat khach hang | `CreateCustomerRequest` | `KhachHangDto` |
+| DELETE | `/api/v1/users/customers/{maKhachHang}` | Xoa mem khach hang | Khong co | `{ "message": "Deleted" }` |
+| GET | `/api/v1/users/system-settings` | Doc cau hinh he thong | Khong co | `CaiDatHeThongDto` |
+| PUT | `/api/v1/users/system-settings` | Cap nhat cau hinh he thong | `CaiDatHeThongDto` | `CaiDatHeThongDto` |
 
 ## 4) FR2 - Product Service (Quan ly san pham)
 

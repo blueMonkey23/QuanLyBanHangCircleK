@@ -1,13 +1,11 @@
 :root {
-  --app-bg: #eef5ff;
-  --panel-bg: #f6f0e8;
-  --text-main: #1f1b18;
-  --text-muted: #71655a;
-  --text-muted-strong: #d8e8ff;
-  --accent-red: #145fcb;
-  --line-soft: rgba(34, 31, 29, 0.09);
-  --font-body: 'Bahnschrift', 'Trebuchet MS', sans-serif;
-  --font-display: 'Constantia', 'Georgia', serif;
+  --app-bg: #eef4ff;
+  --panel-bg: #ffffff;
+  --text-main: #16233a;
+  --text-muted: #66758f;
+  --line-soft: rgba(17, 29, 56, 0.08);
+  --font-body: 'Bahnschrift', 'Segoe UI Variable Text', 'Trebuchet MS', sans-serif;
+  --font-display: 'Aptos Display', 'Bahnschrift', 'Segoe UI Variable Display', sans-serif;
 
   font-family: var(--font-body);
   line-height: 1.5;
@@ -34,8 +32,9 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at top, rgba(42, 124, 241, 0.1), transparent 24%),
-    linear-gradient(180deg, #f4f9ff 0%, #eaf3ff 100%);
+    radial-gradient(circle at top left, rgba(44, 134, 255, 0.14), transparent 22%),
+    radial-gradient(circle at bottom right, rgba(255, 99, 119, 0.14), transparent 28%),
+    linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
 }
 
 body,
@@ -66,8 +65,8 @@ h2,
 h3,
 h4 {
   font-family: var(--font-display);
-  font-weight: 700;
-  line-height: 1.08;
+  font-weight: 800;
+  line-height: 1.06;
   color: var(--text-main);
 }
 

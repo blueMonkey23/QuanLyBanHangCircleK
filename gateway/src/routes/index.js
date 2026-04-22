@@ -1,5 +1,6 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { requireAuth, requirePermissions } = require('circlek-core');
 const { health } = require('../controllers/healthController');
 
 const router = express.Router();
@@ -30,10 +31,86 @@ function createServiceProxy(sourcePrefix, targetPrefix, target) {
   });
 }
 
+function getRequestPath(req) {
+  return req.originalUrl.split('?')[0];
+}
+
+function authorizeByMethod(permissionMap) {
+  return (req, res, next) => {
+    const permissions = permissionMap[req.method];
+
+    if (!permissions || permissions.length === 0) {
+      next();
+      return;
+    }
+
+    requirePermissions(...permissions)(req, res, next);
+  };
+}
+
+function authorizeUserRoutes(req, res, next) {
+  const path = getRequestPath(req);
+
+  if (path.startsWith('/api/v1/users/auth/me')) {
+    next();
+    return;
+  }
+
+  if (path.startsWith('/api/v1/users/accounts') || path === '/api/v1/users/roles' || path === '/api/v1/users/permissions') {
+    requirePermissions('QUAN_LY_NGUOI_DUNG')(req, res, next);
+    return;
+  }
+
+  if (path.startsWith('/api/v1/users/customers')) {
+    requirePermissions('QUAN_LY_KHACH_HANG')(req, res, next);
+    return;
+  }
+
+  if (path.startsWith('/api/v1/users/system-settings')) {
+    requirePermissions('CAI_DAT_HE_THONG')(req, res, next);
+    return;
+  }
+
+  next();
+}
+
 router.get('/health', health);
-router.use('/api/v1/users', createServiceProxy('/api/v1/users', '/users', userService));
-router.use('/api/v1/products', createServiceProxy('/api/v1/products', '/products', productService));
-router.use('/api/v1/orders', createServiceProxy('/api/v1/orders', '/orders', orderService));
-router.use('/api/v1/reports', createServiceProxy('/api/v1/reports', '/reports', reportService));
+
+router.use(
+  '/api/v1/users/auth/login',
+  createServiceProxy('/api/v1/users', '/users', userService),
+);
+
+router.use(
+  '/api/v1/users',
+  requireAuth,
+  authorizeUserRoutes,
+  createServiceProxy('/api/v1/users', '/users', userService),
+);
+
+router.use(
+  '/api/v1/products',
+  requireAuth,
+  authorizeByMethod({
+    POST: ['QUAN_LY_SAN_PHAM'],
+    PUT: ['QUAN_LY_SAN_PHAM'],
+    DELETE: ['QUAN_LY_SAN_PHAM'],
+  }),
+  createServiceProxy('/api/v1/products', '/products', productService),
+);
+
+router.use(
+  '/api/v1/orders',
+  requireAuth,
+  requirePermissions('TAO_HOA_DON'),
+  createServiceProxy('/api/v1/orders', '/orders', orderService),
+);
+
+router.use(
+  '/api/v1/reports',
+  requireAuth,
+  requirePermissions('XEM_BAO_CAO'),
+  createServiceProxy('/api/v1/reports', '/reports', reportService),
+);
 
 module.exports = router;

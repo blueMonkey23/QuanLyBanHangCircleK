@@ -44,6 +44,11 @@ node scripts/init-db.js
 
 If `node scripts/init-db.js` fails with a connection error, MySQL is not running yet or the credentials in `.env` are incorrect.
 
+## Seed Login
+
+- Admin: `admin.circlek` / `123456`
+- NhanVienBanHang: `nv.quay01` / `123456`
+
 ## Run
 
 Run the whole backend stack from the project root:
@@ -75,6 +80,8 @@ All services are exposed through the API Gateway:
 - /api/v1/products -> product-service
 - /api/v1/orders -> order-service
 - /api/v1/reports -> report-service
+
+Most business routes now require a Bearer token from `POST /api/v1/users/auth/login`.
 
 ## Health Checks
 

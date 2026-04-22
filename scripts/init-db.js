@@ -113,6 +113,10 @@ function normalizeStatement(statement) {
 }
 
 async function applySqlFile(connection, filePath) {
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
   const fileName = path.basename(filePath);
   const content = fs.readFileSync(filePath, 'utf8');
   const statements = splitSqlStatements(content)
@@ -151,6 +155,7 @@ async function main() {
     database: dbName,
   });
 
+  await applySqlFile(dbConnection, path.join(DB_DIR, 'schema.sql'));
   await applySqlFile(dbConnection, path.join(DB_DIR, 'stored_procedures.sql'));
   await applySqlFile(dbConnection, path.join(DB_DIR, 'seed.sql'));
 
