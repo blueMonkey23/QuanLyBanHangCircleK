@@ -1,16 +1,9 @@
 :root {
-  --app-bg: #f4f6f8;
+  --app-bg: #eef4ff;
   --panel-bg: #ffffff;
-  --text-main: #1b1b1f;
-  --text-muted: #6b7280;
-  --line-soft: #e5e7eb;
-  --brand-red: #d92027;
-  --brand-red-dark: #b3161d;
-  --sidebar-bg: #0b1220;
-  --sidebar-bg-soft: #0f172a;
-  --topbar-bg: #0b1220;
-  --text-invert: #f8fafc;
-  --text-invert-muted: rgba(248, 250, 252, 0.7);
+  --text-main: #16233a;
+  --text-muted: #66758f;
+  --line-soft: rgba(17, 29, 56, 0.08);
   --font-body: 'Bahnschrift', 'Segoe UI Variable Text', 'Trebuchet MS', sans-serif;
   --font-display: 'Aptos Display', 'Bahnschrift', 'Segoe UI Variable Display', sans-serif;
 
@@ -38,7 +31,10 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--app-bg);
+  background:
+    radial-gradient(circle at top left, rgba(44, 134, 255, 0.14), transparent 22%),
+    radial-gradient(circle at bottom right, rgba(255, 99, 119, 0.14), transparent 28%),
+    linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
 }
 
 body,
