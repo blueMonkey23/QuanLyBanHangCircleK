@@ -32,6 +32,11 @@ function createServiceProxy(sourcePrefix, targetPrefix, target) {
     target,
     changeOrigin: true,
     pathRewrite: (path) => rewriteServicePath(path, sourcePrefix, targetPrefix),
+    onProxyReq: (proxyReq, req) => {
+      if (req.requestId) {
+        proxyReq.setHeader('x-request-id', req.requestId);
+      }
+    },
   });
 }
 
