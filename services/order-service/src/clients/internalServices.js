@@ -79,6 +79,15 @@ async function publishOrderCreatedEvent(event, requestId) {
   });
 }
 
+async function publishOrderCancelledEvent(event, requestId) {
+  return requestJson(`${getReportServiceBaseUrl()}/internal/v1/events/order-cancelled`, {
+    method: 'POST',
+    body: event,
+    serviceName: 'report-service',
+    requestId,
+  });
+}
+
 module.exports = {
   getStaffSnapshot,
   getCustomerSnapshot,
@@ -86,4 +95,5 @@ module.exports = {
   confirmInventoryReservation,
   releaseInventoryReservation,
   publishOrderCreatedEvent,
+  publishOrderCancelledEvent,
 };

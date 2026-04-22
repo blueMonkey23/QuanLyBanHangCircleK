@@ -5,8 +5,14 @@
   "scripts": {
     "db:init": "node scripts/init-db.js",
     "db:init:v2": "node scripts/init-db-v2.js",
+    "db:init:v2:machine-a": "node scripts/init-db-v2-machine-a.js",
+    "db:init:v2:machine-b": "node scripts/init-db-v2-machine-b.js",
     "outbox:replay:v2": "node scripts/replay-outbox-v2.js",
+    "outbox:worker:v2": "node scripts/outbox-worker-v2.js",
     "backend:start": "node scripts/start-backend.js",
-    "backend:smoke": "node scripts/healthcheck.js"
+    "backend:start:v2:machine-a": "node scripts/start-machine-a-v2.js",
+    "backend:start:v2:machine-b": "node scripts/start-machine-b-v2.js",
+    "backend:smoke": "node scripts/healthcheck.js",
+    "backend:smoke:v2": "node scripts/healthcheck-v2.js"
   }
 }

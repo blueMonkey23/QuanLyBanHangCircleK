@@ -229,9 +229,54 @@ async function applyOrderCreatedEvent(event) {
   }
 }
 
+async function applyOrderCancelledEvent(event) {
+  const pool = getPool();
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [processedRows] = await connection.query(
+      `SELECT EventId
+       FROM ProcessedEvent
+       WHERE EventId = ?
+       LIMIT 1`,
+      [event.eventId],
+    );
+
+    if (processedRows.length > 0) {
+      await connection.commit();
+      return {
+        status: 'IGNORED',
+      };
+    }
+
+    const maHoaDon = Number(event.payload.hoaDon.maHoaDon);
+    await connection.query('DELETE FROM FactHoaDonItem WHERE MaHoaDon = ?', [maHoaDon]);
+    await connection.query('DELETE FROM FactHoaDon WHERE MaHoaDon = ?', [maHoaDon]);
+    await connection.query(
+      `INSERT INTO ProcessedEvent
+        (EventId, EventType, AggregateId, ProcessedAt)
+       VALUES (?, ?, ?, UTC_TIMESTAMP())`,
+      [event.eventId, event.eventType, maHoaDon],
+    );
+
+    await connection.commit();
+    return {
+      status: 'PROCESSED',
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 module.exports = {
   getRevenueReport,
   getTopProductsReport,
   getInvoiceSummary,
   applyOrderCreatedEvent,
+  applyOrderCancelledEvent,
 };

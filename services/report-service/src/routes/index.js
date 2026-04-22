@@ -6,7 +6,7 @@ const {
   topProductsReport,
   invoiceSummaryReport,
 } = require('../controllers/reportController');
-const { ingestOrderCreatedEvent } = require('../controllers/internalController');
+const { ingestOrderCreatedEvent, ingestOrderCancelledEvent } = require('../controllers/internalController');
 
 const router = express.Router();
 
@@ -15,5 +15,6 @@ router.get('/reports/revenue', revenueReport);
 router.get('/reports/top-products', topProductsReport);
 router.get('/reports/invoice-summary', invoiceSummaryReport);
 router.post('/internal/v1/events/order-created', requireInternalApiKey, ingestOrderCreatedEvent);
+router.post('/internal/v1/events/order-cancelled', requireInternalApiKey, ingestOrderCancelledEvent);
 
 module.exports = router;

@@ -393,7 +393,7 @@ async function releaseReservation(maReservation, reason) {
       return { status: 'RELEASED' };
     }
 
-    if (reservationStatus !== 'RESERVED') {
+    if (!['RESERVED', 'CONFIRMED'].includes(reservationStatus)) {
       throw createSqlStateError('INVALID_RESERVATION_STATE');
     }
 

@@ -5,10 +5,14 @@ const { health } = require('../controllers/healthController');
 
 const router = express.Router();
 
-const userService = process.env.USER_SERVICE_URL || 'http://localhost:7001';
-const productService = process.env.PRODUCT_SERVICE_URL || 'http://localhost:7002';
-const orderService = process.env.ORDER_SERVICE_URL || 'http://localhost:7003';
-const reportService = process.env.REPORT_SERVICE_URL || 'http://localhost:7004';
+function normalizeServiceUrl(value, fallback) {
+  return String(value || fallback).trim().replace(/\/$/, '');
+}
+
+const userService = normalizeServiceUrl(process.env.USER_SERVICE_URL, 'http://localhost:7001');
+const productService = normalizeServiceUrl(process.env.PRODUCT_SERVICE_URL, 'http://localhost:7002');
+const orderService = normalizeServiceUrl(process.env.ORDER_SERVICE_URL, 'http://localhost:7003');
+const reportService = normalizeServiceUrl(process.env.REPORT_SERVICE_URL, 'http://localhost:7004');
 
 function rewriteServicePath(path, sourcePrefix, targetPrefix) {
   if (path.startsWith(sourcePrefix)) {
@@ -48,69 +52,79 @@ function authorizeByMethod(permissionMap) {
   };
 }
 
-function authorizeUserRoutes(req, res, next) {
-  const path = getRequestPath(req);
+function authorizeUserRoutes(apiPrefix) {
+  return (req, res, next) => {
+    const path = getRequestPath(req);
 
-  if (path.startsWith('/api/v1/users/auth/me')) {
+    if (path.startsWith(`${apiPrefix}/users/auth/me`)) {
+      next();
+      return;
+    }
+
+    if (
+      path.startsWith(`${apiPrefix}/users/accounts`) ||
+      path === `${apiPrefix}/users/roles` ||
+      path === `${apiPrefix}/users/permissions`
+    ) {
+      requirePermissions('QUAN_LY_NGUOI_DUNG')(req, res, next);
+      return;
+    }
+
+    if (path.startsWith(`${apiPrefix}/users/customers`)) {
+      requirePermissions('QUAN_LY_KHACH_HANG')(req, res, next);
+      return;
+    }
+
+    if (path.startsWith(`${apiPrefix}/users/system-settings`)) {
+      requirePermissions('CAI_DAT_HE_THONG')(req, res, next);
+      return;
+    }
+
     next();
-    return;
-  }
+  };
+}
 
-  if (path.startsWith('/api/v1/users/accounts') || path === '/api/v1/users/roles' || path === '/api/v1/users/permissions') {
-    requirePermissions('QUAN_LY_NGUOI_DUNG')(req, res, next);
-    return;
-  }
+function registerVersionedApi(apiPrefix) {
+  router.use(
+    `${apiPrefix}/users/auth/login`,
+    createServiceProxy(`${apiPrefix}/users`, '/users', userService),
+  );
 
-  if (path.startsWith('/api/v1/users/customers')) {
-    requirePermissions('QUAN_LY_KHACH_HANG')(req, res, next);
-    return;
-  }
+  router.use(
+    `${apiPrefix}/users`,
+    requireAuth,
+    authorizeUserRoutes(apiPrefix),
+    createServiceProxy(`${apiPrefix}/users`, '/users', userService),
+  );
 
-  if (path.startsWith('/api/v1/users/system-settings')) {
-    requirePermissions('CAI_DAT_HE_THONG')(req, res, next);
-    return;
-  }
+  router.use(
+    `${apiPrefix}/products`,
+    requireAuth,
+    authorizeByMethod({
+      POST: ['QUAN_LY_SAN_PHAM'],
+      PUT: ['QUAN_LY_SAN_PHAM'],
+      DELETE: ['QUAN_LY_SAN_PHAM'],
+    }),
+    createServiceProxy(`${apiPrefix}/products`, '/products', productService),
+  );
 
-  next();
+  router.use(
+    `${apiPrefix}/orders`,
+    requireAuth,
+    requirePermissions('TAO_HOA_DON'),
+    createServiceProxy(`${apiPrefix}/orders`, '/orders', orderService),
+  );
+
+  router.use(
+    `${apiPrefix}/reports`,
+    requireAuth,
+    requirePermissions('XEM_BAO_CAO'),
+    createServiceProxy(`${apiPrefix}/reports`, '/reports', reportService),
+  );
 }
 
 router.get('/health', health);
-
-router.use(
-  '/api/v1/users/auth/login',
-  createServiceProxy('/api/v1/users', '/users', userService),
-);
-
-router.use(
-  '/api/v1/users',
-  requireAuth,
-  authorizeUserRoutes,
-  createServiceProxy('/api/v1/users', '/users', userService),
-);
-
-router.use(
-  '/api/v1/products',
-  requireAuth,
-  authorizeByMethod({
-    POST: ['QUAN_LY_SAN_PHAM'],
-    PUT: ['QUAN_LY_SAN_PHAM'],
-    DELETE: ['QUAN_LY_SAN_PHAM'],
-  }),
-  createServiceProxy('/api/v1/products', '/products', productService),
-);
-
-router.use(
-  '/api/v1/orders',
-  requireAuth,
-  requirePermissions('TAO_HOA_DON'),
-  createServiceProxy('/api/v1/orders', '/orders', orderService),
-);
-
-router.use(
-  '/api/v1/reports',
-  requireAuth,
-  requirePermissions('XEM_BAO_CAO'),
-  createServiceProxy('/api/v1/reports', '/reports', reportService),
-);
+registerVersionedApi('/api/v1');
+registerVersionedApi('/api/v2');
 
 module.exports = router;

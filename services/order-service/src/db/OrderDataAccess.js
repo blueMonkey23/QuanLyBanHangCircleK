@@ -203,6 +203,76 @@ async function markOrderFailed(maHoaDon) {
   );
 }
 
+async function markOrderCancelling(maHoaDon) {
+  const pool = getPool();
+  const [result] = await pool.query(
+    `UPDATE HoaDon
+     SET TrangThai = 'CANCELLING'
+     WHERE MaHoaDon = ?
+       AND TrangThai = 'CONFIRMED'`,
+    [maHoaDon],
+  );
+
+  return result.affectedRows > 0;
+}
+
+async function restoreOrderToConfirmed(maHoaDon) {
+  const pool = getPool();
+  await pool.query(
+    `UPDATE HoaDon
+     SET TrangThai = 'CONFIRMED'
+     WHERE MaHoaDon = ?
+       AND TrangThai = 'CANCELLING'`,
+    [maHoaDon],
+  );
+}
+
+async function cancelOrderAndCreateOutbox(maHoaDon, reason) {
+  const pool = getPool();
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [updateResult] = await connection.query(
+      `UPDATE HoaDon
+       SET TrangThai = 'CANCELLED'
+       WHERE MaHoaDon = ?
+         AND TrangThai = 'CANCELLING'`,
+      [maHoaDon],
+    );
+
+    if (!updateResult.affectedRows) {
+      throw new Error('ORDER_NOT_CANCELLING');
+    }
+
+    const orderDetail = await getOrderDetail(maHoaDon, connection);
+    const payload = {
+      ...orderDetail,
+      reason: reason || null,
+    };
+    const [outboxResult] = await connection.query(
+      `INSERT INTO OrderOutbox
+        (EventType, AggregateId, PayloadJson, CreatedAt)
+       VALUES ('OrderCancelled', ?, ?, UTC_TIMESTAMP())`,
+      [maHoaDon, JSON.stringify(payload)],
+    );
+
+    await connection.commit();
+    return {
+      eventId: outboxResult.insertId,
+      eventType: 'OrderCancelled',
+      payload,
+      orderDetail,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 async function markOutboxPublished(eventId) {
   const pool = getPool();
   await pool.query(
@@ -219,5 +289,8 @@ module.exports = {
   createPendingOrder,
   confirmOrderAndCreateOutbox,
   markOrderFailed,
+  markOrderCancelling,
+  restoreOrderToConfirmed,
+  cancelOrderAndCreateOutbox,
   markOutboxPublished,
 };

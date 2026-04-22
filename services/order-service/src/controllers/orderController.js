@@ -147,8 +147,26 @@ async function createOrder(req, res, next) {
   }
 }
 
+async function cancelOrder(req, res, next) {
+  try {
+    const result = await workflow.cancelOrder(
+      {
+        maHoaDon: parseRequiredInt(req.params.maHoaDon, 'maHoaDon'),
+        reason: parseOptionalText(req.body.reason),
+      },
+      {
+        requestId: req.requestId,
+      },
+    );
+    res.json(result);
+  } catch (error) {
+    next(normalizeDatabaseError(error));
+  }
+}
+
 module.exports = {
   listOrders,
   getOrderDetail,
   createOrder,
+  cancelOrder,
 };

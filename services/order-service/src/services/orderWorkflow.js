@@ -1,3 +1,4 @@
+const { AppError } = require('circlek-core');
 const repository = require('../db/OrderDataAccess');
 const {
   getStaffSnapshot,
@@ -6,6 +7,7 @@ const {
   confirmInventoryReservation,
   releaseInventoryReservation,
   publishOrderCreatedEvent,
+  publishOrderCancelledEvent,
 } = require('../clients/internalServices');
 
 function roundMoney(value) {
@@ -47,6 +49,34 @@ async function safeReleaseReservation(reservationId, reason, requestId) {
   } catch (error) {
     // Do not mask the original failure if compensation also fails.
   }
+}
+
+async function publishOutboxEvent(outboxEvent, requestId) {
+  if (outboxEvent.eventType === 'OrderCreated') {
+    await publishOrderCreatedEvent(
+      {
+        eventId: String(outboxEvent.eventId),
+        eventType: outboxEvent.eventType,
+        payload: outboxEvent.payload,
+      },
+      requestId,
+    );
+    return;
+  }
+
+  if (outboxEvent.eventType === 'OrderCancelled') {
+    await publishOrderCancelledEvent(
+      {
+        eventId: String(outboxEvent.eventId),
+        eventType: outboxEvent.eventType,
+        payload: outboxEvent.payload,
+      },
+      requestId,
+    );
+    return;
+  }
+
+  throw new AppError('INTERNAL_ERROR', `Unsupported outbox event: ${outboxEvent.eventType}`, 500);
 }
 
 async function createOrder(data, context = {}) {
@@ -97,14 +127,7 @@ async function createOrder(data, context = {}) {
   let reportSyncStatus = 'SYNCED';
 
   try {
-    await publishOrderCreatedEvent(
-      {
-        eventId: String(outboxEvent.eventId),
-        eventType: outboxEvent.eventType,
-        payload: outboxEvent.payload,
-      },
-      requestId,
-    );
+    await publishOutboxEvent(outboxEvent, requestId);
     await repository.markOutboxPublished(outboxEvent.eventId);
   } catch (error) {
     reportSyncStatus = 'PENDING';
@@ -118,6 +141,62 @@ async function createOrder(data, context = {}) {
   };
 }
 
+async function cancelOrder(data, context = {}) {
+  const requestId = context.requestId;
+  const orderDetail = await repository.getOrderDetail(data.maHoaDon);
+
+  if (!orderDetail.hoaDon) {
+    throw new AppError('NOT_FOUND', 'Order not found', 404);
+  }
+
+  if (orderDetail.hoaDon.status === 'CANCELLED') {
+    return {
+      ...orderDetail,
+      reportSyncStatus: 'SYNCED',
+      message: 'Already cancelled',
+    };
+  }
+
+  if (orderDetail.hoaDon.status !== 'CONFIRMED') {
+    throw new AppError('CONFLICT', 'Only confirmed orders can be cancelled', 409);
+  }
+
+  const marked = await repository.markOrderCancelling(data.maHoaDon);
+  if (!marked) {
+    throw new AppError('CONFLICT', 'Order is not in a cancellable state', 409);
+  }
+
+  try {
+    if (orderDetail.hoaDon.reservationId) {
+      await releaseInventoryReservation(
+        orderDetail.hoaDon.reservationId,
+        data.reason || 'Order cancelled',
+        requestId,
+      );
+    }
+  } catch (error) {
+    await repository.restoreOrderToConfirmed(data.maHoaDon);
+    throw error;
+  }
+
+  const outboxEvent = await repository.cancelOrderAndCreateOutbox(data.maHoaDon, data.reason);
+  let reportSyncStatus = 'SYNCED';
+
+  try {
+    await publishOutboxEvent(outboxEvent, requestId);
+    await repository.markOutboxPublished(outboxEvent.eventId);
+  } catch (error) {
+    reportSyncStatus = 'PENDING';
+  }
+
+  return {
+    ...outboxEvent.orderDetail,
+    reportSyncStatus,
+    message: reportSyncStatus === 'SYNCED' ? 'Cancelled' : 'Cancelled; report sync pending',
+  };
+}
+
 module.exports = {
   createOrder,
+  cancelOrder,
 };

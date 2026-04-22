@@ -45,6 +45,24 @@ async function ingestOrderCreatedEvent(req, res, next) {
   }
 }
 
+async function ingestOrderCancelledEvent(req, res, next) {
+  try {
+    const event = {
+      eventId: parseRequiredText(req.body.eventId, 'eventId'),
+      eventType: parseRequiredText(req.body.eventType, 'eventType'),
+      payload: req.body.payload,
+    };
+
+    validateOrderEventPayload(event.payload);
+
+    const result = await repository.applyOrderCancelledEvent(event);
+    res.status(202).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   ingestOrderCreatedEvent,
+  ingestOrderCancelledEvent,
 };
