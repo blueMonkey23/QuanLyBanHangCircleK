@@ -1,5 +1,6 @@
 const { AppError } = require('circlek-core');
 const repository = require('../db/OrderDataAccess');
+const workflow = require('../services/orderWorkflow');
 
 function parseRequiredInt(value, field) {
   const parsed = Number(value);
@@ -25,6 +26,11 @@ function parseRequiredText(value, field) {
   }
 
   return parsed;
+}
+
+function parseOptionalText(value) {
+  const parsed = String(value || '').trim();
+  return parsed || null;
 }
 
 function parseOptionalDateTime(value, field) {
@@ -94,6 +100,7 @@ async function listOrders(req, res, next) {
       fromDate: parseOptionalDateTime(req.query.fromDate, 'fromDate'),
       toDate: parseOptionalDateTime(req.query.toDate, 'toDate'),
       maNhanVien: parseOptionalInt(req.query.maNhanVien, 'maNhanVien'),
+      status: parseOptionalText(req.query.status),
     };
 
     if (filters.fromDate && filters.toDate && filters.fromDate > filters.toDate) {
@@ -126,29 +133,14 @@ async function createOrder(req, res, next) {
   try {
     const data = {
       maNhanVien: parseRequiredInt(req.body.maNhanVien, 'maNhanVien'),
+      maKhachHang: parseOptionalInt(req.body.maKhachHang, 'maKhachHang'),
       phuongThucThanhToan: parseRequiredText(req.body.phuongThucThanhToan, 'phuongThucThanhToan'),
       items: normalizeItems(req.body.items),
     };
 
-    const validation = await repository.validateOrderReferences(
-      data.maNhanVien,
-      data.items.map((item) => item.maSanPham)
-    );
-
-    if (!validation.employeeExists) {
-      throw new AppError('VALIDATION_ERROR', 'maNhanVien does not exist', 400, [
-        { field: 'maNhanVien', reason: 'NOT_FOUND' },
-      ]);
-    }
-
-    if (validation.missingProductIds.length > 0) {
-      throw new AppError('VALIDATION_ERROR', 'One or more products do not exist', 400, validation.missingProductIds.map((productId) => ({
-        field: 'items.maSanPham',
-        reason: `NOT_FOUND:${productId}`,
-      })));
-    }
-
-    const result = await repository.createOrder(data);
+    const result = await workflow.createOrder(data, {
+      requestId: req.requestId,
+    });
     res.status(201).json(result);
   } catch (error) {
     next(normalizeDatabaseError(error));

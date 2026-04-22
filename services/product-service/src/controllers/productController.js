@@ -78,6 +78,10 @@ function normalizeDatabaseError(error) {
     return new AppError('NOT_FOUND', 'Product not found', 404);
   }
 
+  if (error && error.code === 'ER_DUP_ENTRY') {
+    return new AppError('CONFLICT', 'Duplicate data', 409);
+  }
+
   return error;
 }
 

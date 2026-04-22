@@ -41,6 +41,19 @@ function mapInvoiceSummaryRow(row) {
   };
 }
 
+function normalizeDateTimeInput(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
 async function getRevenueReport(filters) {
   const pool = getPool();
   let sql = '';
@@ -63,7 +76,7 @@ async function getRevenueReport(filters) {
 
   const [rows] = await pool.query(
     `${sql}
-     FROM HoaDon
+     FROM FactHoaDon
      WHERE (? IS NULL OR NgayTao >= ?)
        AND (? IS NULL OR NgayTao <= ?)
      ${groupSql}
@@ -82,13 +95,13 @@ async function getRevenueReport(filters) {
 async function getTopProductsReport(filters) {
   const pool = getPool();
   const [rows] = await pool.query(
-    `SELECT cthd.MaSanPham AS maSanPham, cthd.TenSanPham AS tenSanPham,
+    `SELECT cthd.MaSanPham AS maSanPham, cthd.TenSanPhamSnapshot AS tenSanPham,
             SUM(cthd.SoLuong) AS tongSoLuongBan
-     FROM ChiTietHoaDon cthd
-     JOIN HoaDon hd ON hd.MaHoaDon = cthd.MaHoaDon
+     FROM FactHoaDonItem cthd
+     JOIN FactHoaDon hd ON hd.MaHoaDon = cthd.MaHoaDon
      WHERE (? IS NULL OR hd.NgayTao >= ?)
        AND (? IS NULL OR hd.NgayTao <= ?)
-     GROUP BY cthd.MaSanPham, cthd.TenSanPham
+     GROUP BY cthd.MaSanPham, cthd.TenSanPhamSnapshot
      ORDER BY tongSoLuongBan DESC
      LIMIT ?`,
     [
@@ -106,7 +119,7 @@ async function getInvoiceSummary(filters) {
   const pool = getPool();
   const [rows] = await pool.query(
     `SELECT COUNT(*) AS soHoaDon, SUM(TongTien) AS tongDoanhThu
-     FROM HoaDon
+     FROM FactHoaDon
      WHERE (? IS NULL OR NgayTao >= ?)
        AND (? IS NULL OR NgayTao <= ?)`,
     [
@@ -119,8 +132,106 @@ async function getInvoiceSummary(filters) {
   return mapInvoiceSummaryRow(rows[0]);
 }
 
+async function applyOrderCreatedEvent(event) {
+  const pool = getPool();
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [processedRows] = await connection.query(
+      `SELECT EventId
+       FROM ProcessedEvent
+       WHERE EventId = ?
+       LIMIT 1`,
+      [event.eventId],
+    );
+
+    if (processedRows.length > 0) {
+      await connection.commit();
+      return {
+        status: 'IGNORED',
+      };
+    }
+
+    const hoaDon = event.payload.hoaDon;
+    const chiTiet = Array.isArray(event.payload.chiTiet) ? event.payload.chiTiet : [];
+
+    await connection.query(
+      `INSERT INTO FactHoaDon
+        (MaHoaDon, MaNhanVien, TenNhanVienSnapshot, UsernameNhanVienSnapshot, MaKhachHang, TenKhachHangSnapshot, NgayTao, TongTien, PhuongThucThanhToan)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         MaNhanVien = VALUES(MaNhanVien),
+         TenNhanVienSnapshot = VALUES(TenNhanVienSnapshot),
+         UsernameNhanVienSnapshot = VALUES(UsernameNhanVienSnapshot),
+         MaKhachHang = VALUES(MaKhachHang),
+         TenKhachHangSnapshot = VALUES(TenKhachHangSnapshot),
+         NgayTao = VALUES(NgayTao),
+         TongTien = VALUES(TongTien),
+         PhuongThucThanhToan = VALUES(PhuongThucThanhToan)`,
+      [
+        hoaDon.maHoaDon,
+        hoaDon.maNhanVien,
+        hoaDon.tenNhanVien || null,
+        hoaDon.usernameNhanVien || null,
+        hoaDon.maKhachHang || null,
+        hoaDon.tenKhachHang || null,
+        normalizeDateTimeInput(hoaDon.ngayTao),
+        hoaDon.tongTien,
+        hoaDon.phuongThucThanhToan,
+      ],
+    );
+
+    await connection.query('DELETE FROM FactHoaDonItem WHERE MaHoaDon = ?', [hoaDon.maHoaDon]);
+
+    if (chiTiet.length > 0) {
+      const placeholders = chiTiet.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+      const values = [];
+
+      chiTiet.forEach((item) => {
+        values.push(
+          hoaDon.maHoaDon,
+          item.maSanPham,
+          item.tenSanPham,
+          item.soLuong,
+          item.donGia,
+          item.phanTramGiam || 0,
+          item.giaSauGiam || item.donGia,
+          item.giamGia || 0,
+        );
+      });
+
+      await connection.query(
+        `INSERT INTO FactHoaDonItem
+          (MaHoaDon, MaSanPham, TenSanPhamSnapshot, SoLuong, DonGiaSnapshot, PhanTramGiamSnapshot, GiaSauGiamSnapshot, GiamGia)
+         VALUES ${placeholders}`,
+        values,
+      );
+    }
+
+    await connection.query(
+      `INSERT INTO ProcessedEvent
+        (EventId, EventType, AggregateId, ProcessedAt)
+       VALUES (?, ?, ?, UTC_TIMESTAMP())`,
+      [event.eventId, event.eventType, hoaDon.maHoaDon],
+    );
+
+    await connection.commit();
+    return {
+      status: 'PROCESSED',
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 module.exports = {
   getRevenueReport,
   getTopProductsReport,
   getInvoiceSummary,
+  applyOrderCreatedEvent,
 };

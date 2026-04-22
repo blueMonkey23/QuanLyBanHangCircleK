@@ -63,6 +63,19 @@ function mapPermissionRow(row) {
   };
 }
 
+function mapStaffSnapshotRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    maNhanVien: toNumberOrNull(row.MaNhanVien),
+    hoTen: row.HoTen,
+    dienThoai: row.DienThoai,
+    username: row.Username || null,
+  };
+}
+
 function mapAuthProfile(row, permissions) {
   if (!row) {
     return null;
@@ -329,6 +342,22 @@ async function listPermissions() {
   return rows.map(mapPermissionRow);
 }
 
+async function getStaffSnapshot(maNhanVien) {
+  const pool = getPool();
+  const [rows] = await pool.query(
+    `SELECT nv.MaNhanVien, nv.HoTen, nv.DienThoai, tk.Username
+     FROM NhanVien nv
+     JOIN TaiKhoan tk ON tk.MaTaiKhoan = nv.MaTaiKhoan
+     WHERE nv.MaNhanVien = ?
+       AND nv.IsDeleted = 0
+       AND tk.IsDeleted = 0
+     LIMIT 1`,
+    [maNhanVien],
+  );
+
+  return mapStaffSnapshotRow(rows[0]) || null;
+}
+
 module.exports = {
   createAccount,
   updateAccount,
@@ -340,4 +369,5 @@ module.exports = {
   getAuthProfileById,
   listRoles,
   listPermissions,
+  getStaffSnapshot,
 };

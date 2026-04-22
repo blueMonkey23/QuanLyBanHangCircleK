@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "db:init": "node scripts/init-db.js",
+    "db:init:v2": "node scripts/init-db-v2.js",
+    "outbox:replay:v2": "node scripts/replay-outbox-v2.js",
     "backend:start": "node scripts/start-backend.js",
     "backend:smoke": "node scripts/healthcheck.js"
   }
