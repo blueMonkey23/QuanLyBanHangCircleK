@@ -7,7 +7,8 @@ import {
 } from './api'
 import './App.css'
 
-const VAT_RATE = 0.08
+const DEFAULT_VAT_PERCENT = 8
+const DEFAULT_PAYMENT_METHOD = 'TIEN_MAT'
 
 const PERMISSIONS = {
   SALES: 'TAO_HOA_DON',
@@ -201,6 +202,53 @@ const FALLBACK_ORDERS = [
   },
 ]
 
+const FALLBACK_ORDER_DETAIL_LOOKUP = {
+  C01: [
+    {
+      maChiTiet: 'C01-1',
+      maHoaDon: 'C01',
+      maSanPham: 1,
+      tenSanPham: 'MATCHA PhaTea',
+      soLuong: 2,
+      donGia: 80000,
+      giamGia: 10000,
+    },
+  ],
+  C02: [
+    {
+      maChiTiet: 'C02-1',
+      maHoaDon: 'C02',
+      maSanPham: 2,
+      tenSanPham: 'HIGHLAND COFFEE',
+      soLuong: 4,
+      donGia: 50000,
+      giamGia: 0,
+    },
+  ],
+  C03: [
+    {
+      maChiTiet: 'C03-1',
+      maHoaDon: 'C03',
+      maSanPham: 5,
+      tenSanPham: 'CAFE PHIN',
+      soLuong: 2,
+      donGia: 18000,
+      giamGia: 0,
+    },
+  ],
+  C04: [
+    {
+      maChiTiet: 'C04-1',
+      maHoaDon: 'C04',
+      maSanPham: 3,
+      tenSanPham: 'Bánh mì tam giác',
+      soLuong: 2,
+      donGia: 28000,
+      giamGia: 0,
+    },
+  ],
+}
+
 const FALLBACK_REVENUE_ROWS = [
   { period: 'Tuần 1', invoiceCount: 12, revenue: 1450000 },
   { period: 'Tuần 2', invoiceCount: 17, revenue: 1980000 },
@@ -392,6 +440,10 @@ function normalizeSession(rawSession) {
     return null
   }
 
+  if (rawSession.token === 'demo-session' || rawSession.mode === 'demo') {
+    return null
+  }
+
   const permissions = Array.isArray(rawSession.user.permissions)
     ? rawSession.user.permissions.map((permission) =>
         typeof permission === 'string'
@@ -402,27 +454,12 @@ function normalizeSession(rawSession) {
 
   return {
     token: rawSession.token,
-    mode: rawSession.mode || 'live',
+    mode: 'live',
     user: {
       ...rawSession.user,
       permissions,
     },
   }
-}
-
-function createDemoSession(username = 'admin.circlek') {
-  return normalizeSession({
-    token: 'demo-session',
-    mode: 'demo',
-    user: {
-      maTaiKhoan: 1,
-      maNhanVien: 1,
-      username,
-      hoTen: 'Admin Circle K',
-      dienThoai: '0912 345 678',
-      permissions: FALLBACK_PERMISSION_NAMES,
-    },
-  })
 }
 
 function pickCategoryEmoji(index) {
@@ -508,18 +545,20 @@ function mapOrders(rawOrders, currentUser) {
         'tenKhachHang',
         'HoTenKhachHang',
         'hoTenKhachHang',
-      ) ||
-      readField(order, 'TenNhanVien', 'tenNhanVien') ||
-      currentUser?.hoTen ||
-      'Khách lẻ',
+      ) || 'Khách lẻ',
     assigneeName:
-      readField(order, 'TenNhanVien', 'tenNhanVien') ||
+      readField(order, 'TenNhanVien', 'tenNhanVien', 'UsernameNhanVien', 'usernameNhanVien') ||
       currentUser?.hoTen ||
       currentUser?.username ||
       'Admin',
+    maNhanVien: Number(readField(order, 'MaNhanVien', 'maNhanVien') ?? currentUser?.maNhanVien ?? 0),
     total: Number(readField(order, 'TongTien', 'tongTien', 'ThanhTien', 'thanhTien') ?? 0),
     status: readField(order, 'TrangThai', 'trangThai') || 'Mới',
-    createdAt: readField(order, 'NgayLap', 'ngayLap', 'createdAt') || new Date().toISOString(),
+    createdAt:
+      readField(order, 'NgayTao', 'ngayTao', 'NgayLap', 'ngayLap', 'createdAt') ||
+      new Date().toISOString(),
+    paymentMethod:
+      readField(order, 'PhuongThucThanhToan', 'phuongThucThanhToan') || DEFAULT_PAYMENT_METHOD,
   }))
 }
 
@@ -689,6 +728,339 @@ function downloadJson(filename, payload) {
   window.URL.revokeObjectURL(url)
 }
 
+function parseVatPercent(value) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_VAT_PERCENT
+  }
+
+  return Math.min(100, Math.max(0, parsed))
+}
+
+function roundMoney(value) {
+  return Math.round(Number(value || 0))
+}
+
+function formatPaymentMethod(method) {
+  switch (String(method || '').toUpperCase()) {
+    case 'THE':
+      return 'Thẻ'
+    case 'CHUYEN_KHOAN':
+      return 'Chuyển khoản'
+    case 'TIEN_MAT':
+    default:
+      return 'Tiền mặt'
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function buildFallbackOrderDetail(order) {
+  const cachedLines = FALLBACK_ORDER_DETAIL_LOOKUP[String(order?.id)] || []
+  const sourceLines = cachedLines.length > 0
+    ? cachedLines
+    : Array.isArray(order?.lines) && order.lines.length > 0
+      ? order.lines.map((line, index) => ({
+          maChiTiet: `${order.id}-${index + 1}`,
+          maHoaDon: order.id,
+          maSanPham: line.productId || line.id || index + 1,
+          tenSanPham: line.name || `Sản phẩm ${index + 1}`,
+          soLuong: Number(line.quantity || 1),
+          donGia: Number(line.price || line.unitPrice || line.lineTotal || 0),
+          giamGia: Number(line.discount || 0),
+        }))
+      : [
+          {
+            maChiTiet: `${order?.id || 'demo'}-1`,
+            maHoaDon: order?.id || 'demo',
+            maSanPham: 0,
+            tenSanPham: 'Giỏ hàng tổng hợp',
+            soLuong: 1,
+            donGia: Number(order?.total || 0),
+            giamGia: 0,
+          },
+        ]
+
+  return {
+    hoaDon: {
+      maHoaDon: order?.id || 'demo',
+      maNhanVien: order?.maNhanVien || null,
+      ngayTao: order?.createdAt || new Date().toISOString(),
+      tongTien: Number(order?.total || 0),
+      phuongThucThanhToan: order?.paymentMethod || DEFAULT_PAYMENT_METHOD,
+    },
+    chiTiet: sourceLines,
+  }
+}
+
+function buildInvoicePreview(order, detailRows, settings) {
+  const fallback = buildFallbackOrderDetail(order)
+  const rows = Array.isArray(detailRows) && detailRows.length > 0 ? detailRows : fallback.chiTiet
+  const items = rows.map((detail, index) => {
+    const quantity = Math.max(1, Number(readField(detail, 'soLuong', 'SoLuong') ?? 1))
+    const unitPrice = Number(readField(detail, 'donGia', 'DonGia') ?? 0)
+    const discount = Number(readField(detail, 'giamGia', 'GiamGia') ?? 0)
+    const lineSubtotal = roundMoney(quantity * unitPrice)
+    const lineTotal = Math.max(0, roundMoney(lineSubtotal - discount))
+
+    return {
+      id: readField(detail, 'maChiTiet', 'MaChiTiet') ?? `${order?.id || 'invoice'}-${index + 1}`,
+      name: readField(detail, 'tenSanPham', 'TenSanPham') || `Sản phẩm ${index + 1}`,
+      quantity,
+      unitPrice,
+      discount,
+      lineSubtotal,
+      lineTotal,
+    }
+  })
+
+  const subtotal = items.reduce((total, item) => total + item.lineSubtotal, 0)
+  const discountTotal = items.reduce((total, item) => total + item.discount, 0)
+  const netFromDetails = items.reduce((total, item) => total + item.lineTotal, 0)
+  const rawOrderTotal = Number(order?.total)
+  const netAmount = Number.isFinite(rawOrderTotal) && rawOrderTotal >= 0 ? rawOrderTotal : netFromDetails
+  const vatPercent = parseVatPercent(settings?.vatPercent)
+  const vatAmount = Math.max(0, roundMoney((netAmount * vatPercent) / 100))
+  const grandTotal = Math.max(0, roundMoney(netAmount + vatAmount))
+
+  return {
+    orderId: order?.id || fallback.hoaDon.maHoaDon,
+    customerName: order?.customerName || 'Khách lẻ',
+    assigneeName: order?.assigneeName || 'Nhân viên bán hàng',
+    createdAt: order?.createdAt || fallback.hoaDon.ngayTao,
+    paymentMethod: formatPaymentMethod(
+      order?.paymentMethod || fallback.hoaDon.phuongThucThanhToan || DEFAULT_PAYMENT_METHOD,
+    ),
+    storeName: settings?.tenCuaHang || FALLBACK_SETTINGS.tenCuaHang,
+    address: settings?.diaChi || FALLBACK_SETTINGS.diaChi,
+    phone: settings?.soDienThoai || FALLBACK_SETTINGS.soDienThoai,
+    email: settings?.email || FALLBACK_SETTINGS.email,
+    note: settings?.noiDungHoaDon || FALLBACK_SETTINGS.noiDungHoaDon,
+    vatPercent,
+    items,
+    subtotal,
+    discountTotal,
+    netAmount,
+    vatAmount,
+    grandTotal,
+  }
+}
+
+function renderInvoicePrintWindow(printWindow, invoice) {
+  if (!printWindow) {
+    throw new Error('Trình duyệt đang chặn cửa sổ in.')
+  }
+
+  const rowsMarkup = invoice.items
+    .map(
+      (item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>
+            <strong>${escapeHtml(item.name)}</strong><br />
+            <span>SL ${escapeHtml(item.quantity)} x ${escapeHtml(formatCurrency(item.unitPrice))}</span>
+          </td>
+          <td>${escapeHtml(formatCurrency(item.discount))}</td>
+          <td>${escapeHtml(formatCurrency(item.lineTotal))}</td>
+        </tr>
+      `,
+    )
+    .join('')
+
+  printWindow.document.open()
+  printWindow.document.write(`<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hoa don #${escapeHtml(invoice.orderId)}</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        padding: 32px;
+        color: #16233a;
+        background: #ffffff;
+      }
+
+      .sheet {
+        max-width: 920px;
+        margin: 0 auto;
+        display: grid;
+        gap: 24px;
+      }
+
+      .hero,
+      .block,
+      .totals {
+        border: 1px solid #dfe7f5;
+        border-radius: 18px;
+        padding: 20px;
+      }
+
+      .hero {
+        background: linear-gradient(180deg, #f6f9ff, #edf4ff);
+      }
+
+      .hero-top,
+      .meta,
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .meta-card,
+      .block {
+        background: #ffffff;
+      }
+
+      .meta-card {
+        min-width: 180px;
+        border: 1px solid #e5ecf8;
+        border-radius: 14px;
+        padding: 14px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #5e6c84;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid #e8eef8;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #5e6c84;
+      }
+
+      .totals {
+        min-width: 280px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .totals-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .totals-row--grand {
+        padding-top: 12px;
+        border-top: 1px dashed #bfd0ef;
+        font-size: 18px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">
+      <section class="hero">
+        <div class="hero-top">
+          <div>
+            <p class="eyebrow">${escapeHtml(invoice.storeName)}</p>
+            <h1>Hoa don ban hang</h1>
+            <p>${escapeHtml(invoice.address)}</p>
+            <p>${escapeHtml(invoice.phone)} | ${escapeHtml(invoice.email)}</p>
+          </div>
+          <div>
+            <p class="eyebrow">Ma don</p>
+            <h2>#${escapeHtml(invoice.orderId)}</h2>
+            <p>${escapeHtml(formatDateTime(invoice.createdAt))}</p>
+          </div>
+        </div>
+
+        <div class="meta" style="margin-top: 20px;">
+          <div class="meta-card">
+            <p class="eyebrow">Khach hang</p>
+            <h3>${escapeHtml(invoice.customerName)}</h3>
+          </div>
+          <div class="meta-card">
+            <p class="eyebrow">Nhan vien</p>
+            <h3>${escapeHtml(invoice.assigneeName)}</h3>
+          </div>
+          <div class="meta-card">
+            <p class="eyebrow">Thanh toan</p>
+            <h3>${escapeHtml(invoice.paymentMethod)}</h3>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <p class="eyebrow">Chi tiet</p>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>San pham</th>
+              <th>Giam gia</th>
+              <th>Thanh tien</th>
+            </tr>
+          </thead>
+          <tbody>${rowsMarkup}</tbody>
+        </table>
+      </section>
+
+      <div class="footer">
+        <section class="block" style="flex: 1 1 320px;">
+          <p class="eyebrow">Ghi chu hoa don</p>
+          <p>${escapeHtml(invoice.note)}</p>
+        </section>
+
+        <section class="totals">
+          <div class="totals-row"><span>Tam tinh</span><strong>${escapeHtml(formatCurrency(invoice.subtotal))}</strong></div>
+          <div class="totals-row"><span>Giam gia</span><strong>${escapeHtml(formatCurrency(invoice.discountTotal))}</strong></div>
+          <div class="totals-row"><span>Truoc VAT</span><strong>${escapeHtml(formatCurrency(invoice.netAmount))}</strong></div>
+          <div class="totals-row"><span>VAT (${escapeHtml(invoice.vatPercent)}%)</span><strong>${escapeHtml(formatCurrency(invoice.vatAmount))}</strong></div>
+          <div class="totals-row totals-row--grand"><span>Tong thanh toan</span><strong>${escapeHtml(formatCurrency(invoice.grandTotal))}</strong></div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>`)
+  printWindow.document.close()
+  printWindow.focus()
+  printWindow.setTimeout(() => {
+    printWindow.print()
+  }, 150)
+}
+
 function StatusPill({ tone = 'neutral', children }) {
   return <span className={`status-pill status-pill--${tone}`}>{children}</span>
 }
@@ -779,7 +1151,10 @@ function App() {
   const [productForm, setProductForm] = useState(EMPTY_PRODUCT_FORM)
   const [showUserModal, setShowUserModal] = useState(false)
   const [showRoleModal, setShowRoleModal] = useState(false)
+  const [showOrderModal, setShowOrderModal] = useState(false)
   const [accountForm, setAccountForm] = useState(EMPTY_ACCOUNT_FORM)
+  const [selectedOrderPreview, setSelectedOrderPreview] = useState(null)
+  const [loadingOrderId, setLoadingOrderId] = useState('')
   const [cartItems, setCartItems] = useState([])
   const [saleQuantity, setSaleQuantity] = useState(1)
   const [cartNote, setCartNote] = useState('')
@@ -822,72 +1197,20 @@ function App() {
     }
   }
 
-  function applyDemoData(source = 'demo') {
-    const demoUser = session?.user || createDemoSession(loginForm.username).user
-    const demoAccounts = [
-      {
-        id: Number(demoUser?.maTaiKhoan || 1),
-        username: demoUser?.username || 'admin.circlek',
-        fullName: demoUser?.hoTen || 'Admin Circle K',
-        roleId: 1,
-        roleLabel: 'Admin',
-        phone: demoUser?.dienThoai || '0912 345 678',
-        status: 'Hoạt động',
-      },
-      {
-        id: 2,
-        username: 'cashier.circlek',
-        fullName: 'Nhân viên quầy 01',
-        roleId: 2,
-        roleLabel: 'Nhân viên bán hàng',
-        phone: '0903 111 222',
-        status: 'Hoạt động',
-      },
-    ]
-
-    setCategories(FALLBACK_CATEGORIES)
-    setSuppliers(FALLBACK_SUPPLIERS)
-    setProducts(FALLBACK_PRODUCTS)
-    setOrders(FALLBACK_ORDERS)
-    setReportRows(FALLBACK_REVENUE_ROWS)
-    setTopProducts(FALLBACK_TOP_PRODUCTS)
-    setSummary({
-      invoiceCount: FALLBACK_ORDERS.length,
-      revenue: FALLBACK_ORDERS.reduce((total, order) => total + order.total, 0),
-    })
-    setRoles(FALLBACK_ROLES)
-    setPermissionNamesCatalog(FALLBACK_PERMISSION_NAMES)
-    setAccounts(demoAccounts)
-    setSettingsForm(FALLBACK_SETTINGS)
-    setSelectedProductId(String(FALLBACK_PRODUCTS[0].id))
-    setProductForm(EMPTY_PRODUCT_FORM)
-
-    if (source === 'demo') {
-      setNotice({
-        tone: 'info',
-        message: 'Đang chạy UI bằng dữ liệu demo nội bộ để bạn test layout mà không cần backend.',
-      })
-    }
-  }
-
   function handleUnauthorized() {
     persistSession(null)
     setCartItems([])
     setShowCheckoutModal(false)
     setShowUserModal(false)
     setShowRoleModal(false)
+    setShowOrderModal(false)
+    setSelectedOrderPreview(null)
+    setLoadingOrderId('')
     setBooting(false)
   }
 
   async function refreshDashboard({ silent = false } = {}) {
     if (!session?.token) {
-      return
-    }
-
-    if (session.mode === 'demo') {
-      applyDemoData('demo')
-      setBooting(false)
-      setSyncing(false)
       return
     }
 
@@ -1029,7 +1352,7 @@ function App() {
     }
 
     void refreshDashboard()
-  }, [session?.token, session?.mode])
+  }, [session?.token])
 
   useEffect(() => {
     if (availableNavItems.length === 0) {
@@ -1123,8 +1446,10 @@ function App() {
 
   const subtotal = cartLines.reduce((total, line) => total + line.lineTotal, 0)
   const discountValue = Number(discountAmount || 0)
-  const vatValue = Math.max(0, Math.round((subtotal - discountValue) * VAT_RATE))
-  const grandTotal = Math.max(0, subtotal - discountValue + vatValue)
+  const checkoutVatPercent = parseVatPercent(settingsForm.vatPercent)
+  const taxableAmount = Math.max(0, subtotal - discountValue)
+  const vatValue = Math.max(0, roundMoney((taxableAmount * checkoutVatPercent) / 100))
+  const grandTotal = Math.max(0, taxableAmount + vatValue)
   const orderStatusSummary = {
     all: orders.length,
     new: orders.filter((order) => normalizeText(order.status).includes('moi')).length,
@@ -1135,12 +1460,9 @@ function App() {
 
   const averageTicket = summary.invoiceCount > 0 ? summary.revenue / summary.invoiceCount : 0
   const maxRevenue = Math.max(...reportRows.map((row) => row.revenue), 1)
-
-  function openDemoMode() {
-    const demoSession = createDemoSession(loginForm.username || 'admin.circlek')
-    persistSession(demoSession)
-    applyDemoData('demo')
-  }
+  const selectedInvoice = selectedOrderPreview
+    ? buildInvoicePreview(selectedOrderPreview.order, selectedOrderPreview.detail, settingsForm)
+    : null
 
   async function handleLogin(event) {
     event.preventDefault()
@@ -1157,10 +1479,35 @@ function App() {
         message: 'Đăng nhập thành công. Đang nạp giao diện theo đúng quyền của tài khoản.',
       })
     } catch (error) {
-      openDemoMode()
+      persistSession(null)
       setNotice({
         tone: 'warning',
         message: `Gateway chưa sẵn sàng (${extractErrorMessage(error)}). Đã chuyển sang demo mode để test UI.`,
+      })
+    } finally {
+      setBusyAction('')
+    }
+  }
+
+  async function handleLiveLogin(event) {
+    event.preventDefault()
+    setBusyAction('login')
+
+    try {
+      const result = await api.login(loginForm)
+      persistSession({
+        ...result,
+        mode: 'live',
+      })
+      setNotice({
+        tone: 'success',
+        message: 'Đăng nhập thành công. Đang nạp giao diện theo đúng quyền của tài khoản.',
+      })
+    } catch (error) {
+      persistSession(null)
+      setNotice({
+        tone: 'warning',
+        message: extractErrorMessage(error),
       })
     } finally {
       setBusyAction('')
@@ -1435,9 +1782,18 @@ function App() {
           id: `C${String(Date.now()).slice(-3)}`,
           customerName: 'Khách tại quầy',
           assigneeName: currentUser?.hoTen || currentUser?.username || 'Admin',
-          total: grandTotal,
+          total: taxableAmount,
           status: 'Mới',
           createdAt: new Date().toISOString(),
+          paymentMethod,
+          lines: cartLines.map((line) => ({
+            id: line.id,
+            productId: line.id,
+            name: line.name,
+            quantity: line.quantity,
+            unitPrice: line.price,
+            discount: 0,
+          })),
         }
         setOrders((current) => [newOrder, ...current])
       } else {
@@ -1466,6 +1822,107 @@ function App() {
       })
     } finally {
       setBusyAction('')
+    }
+  }
+
+  async function loadOrderPreview(order) {
+    const orderId = String(order?.id || '')
+    setLoadingOrderId(orderId)
+
+    try {
+      const numericOrderId = Number(orderId)
+      const shouldUseFallback = !Number.isInteger(numericOrderId) || numericOrderId <= 0
+
+      if (shouldUseFallback) {
+        const fallback = buildFallbackOrderDetail(order)
+        return {
+          order: {
+            ...order,
+            id: String(fallback.hoaDon.maHoaDon),
+            total: Number(fallback.hoaDon.tongTien),
+            createdAt: fallback.hoaDon.ngayTao,
+            paymentMethod: fallback.hoaDon.phuongThucThanhToan,
+          },
+          detail: fallback.chiTiet,
+        }
+      }
+
+      const result = await api.getOrderDetail(numericOrderId)
+      return {
+        order: {
+          ...order,
+          id: String(readField(result?.hoaDon, 'maHoaDon', 'MaHoaDon') ?? orderId),
+          total: Number(readField(result?.hoaDon, 'tongTien', 'TongTien') ?? order.total ?? 0),
+          createdAt: readField(result?.hoaDon, 'ngayTao', 'NgayTao') || order.createdAt,
+          customerName:
+            readField(result?.hoaDon, 'tenKhachHang', 'TenKhachHang', 'hoTenKhachHang', 'HoTenKhachHang') ||
+            order.customerName ||
+            'Khách lẻ',
+          assigneeName:
+            readField(result?.hoaDon, 'tenNhanVien', 'TenNhanVien', 'usernameNhanVien', 'UsernameNhanVien') ||
+            order.assigneeName ||
+            currentUser?.hoTen ||
+            currentUser?.username ||
+            'Admin',
+          paymentMethod:
+            readField(result?.hoaDon, 'phuongThucThanhToan', 'PhuongThucThanhToan') ||
+            order.paymentMethod ||
+            DEFAULT_PAYMENT_METHOD,
+          maNhanVien:
+            Number(readField(result?.hoaDon, 'maNhanVien', 'MaNhanVien') ?? order.maNhanVien ?? 0),
+        },
+        detail: Array.isArray(result?.chiTiet) ? result.chiTiet : [],
+      }
+    } finally {
+      setLoadingOrderId((current) => (current === orderId ? '' : current))
+    }
+  }
+
+  async function handleViewOrder(order) {
+    try {
+      const preview = await loadOrderPreview(order)
+      setSelectedOrderPreview(preview)
+      setShowOrderModal(true)
+    } catch (error) {
+      setNotice({
+        tone: 'warning',
+        message: extractErrorMessage(error),
+      })
+    }
+  }
+
+  async function handlePrintOrder(order = selectedOrderPreview?.order) {
+    if (!order) {
+      return
+    }
+
+    const printWindow = window.open('', '_blank', 'width=1080,height=820')
+    if (!printWindow) {
+      setNotice({
+        tone: 'warning',
+        message: 'Trình duyệt đang chặn cửa sổ in. Hãy cho phép popup rồi thử lại.',
+      })
+      return
+    }
+
+    printWindow.document.write('<p style="font-family: Arial, sans-serif; padding: 24px;">Đang tạo hóa đơn...</p>')
+
+    try {
+      const preview =
+        selectedOrderPreview && String(selectedOrderPreview.order?.id) === String(order.id)
+          ? selectedOrderPreview
+          : await loadOrderPreview(order)
+
+      renderInvoicePrintWindow(
+        printWindow,
+        buildInvoicePreview(preview.order, preview.detail, settingsForm),
+      )
+    } catch (error) {
+      printWindow.close()
+      setNotice({
+        tone: 'warning',
+        message: extractErrorMessage(error),
+      })
     }
   }
 
@@ -1526,13 +1983,8 @@ function App() {
           <aside className="panel panel--accent">
             <p className="eyebrow">Admin</p>
             <h3>{currentUser?.hoTen || currentUser?.username || 'Admin'}</h3>
-            <p className="panel__copy">
-              Màn hình này bám artboard đơn hàng trong file `.fig`: sidebar nóng màu, header xanh và bảng sáng.
-            </p>
             <div className="mini-stack">
-              <StatusPill tone={session?.mode === 'demo' ? 'warning' : 'success'}>
-                {session?.mode === 'demo' ? 'Demo mode' : 'Live mode'}
-              </StatusPill>
+              <StatusPill tone="success">Live mode</StatusPill>
               <StatusPill tone="neutral">{formatDateLong(new Date())}</StatusPill>
             </div>
           </aside>
@@ -1587,8 +2039,22 @@ function App() {
                       <td>{formatDateTime(order.createdAt)}</td>
                       <td>
                         <div className="table-actions">
-                          <button className="tiny-button" type="button">Xem</button>
-                          <button className="tiny-button tiny-button--ghost" type="button">In</button>
+                          <button
+                            className="tiny-button"
+                            type="button"
+                            onClick={() => void handleViewOrder(order)}
+                            disabled={loadingOrderId === String(order.id)}
+                          >
+                            {loadingOrderId === String(order.id) ? 'Đang tải...' : 'Xem'}
+                          </button>
+                          <button
+                            className="tiny-button tiny-button--ghost"
+                            type="button"
+                            onClick={() => void handlePrintOrder(order)}
+                            disabled={loadingOrderId === String(order.id)}
+                          >
+                            In
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -2195,7 +2661,7 @@ function App() {
                   <strong>Điện thoại</strong>
                   <p>{currentUser?.dienThoai || settingsForm.soDienThoai}</p>
                 </div>
-                <StatusPill tone="neutral">{session?.mode === 'demo' ? 'Demo' : 'Live'}</StatusPill>
+                <StatusPill tone="neutral">Live</StatusPill>
               </div>
               <div className="stack-list__item">
                 <div>
@@ -2322,7 +2788,8 @@ function App() {
           </div>
         </section>
 
-        <form className="login-card" onSubmit={handleLogin}>
+        <form className="login-card" onSubmit={handleLiveLogin}>
+          {notice.tone !== 'info' ? <NoticeBar notice={notice} /> : null}
           <div>
             <p className="eyebrow">Đăng nhập</p>
             <h2>Vào giao diện quản trị</h2>
@@ -2349,13 +2816,10 @@ function App() {
             <button className="primary-button" type="submit" disabled={busyAction === 'login'}>
               {busyAction === 'login' ? 'Đang kết nối...' : 'Đăng nhập'}
             </button>
-            <button className="ghost-button" type="button" onClick={openDemoMode}>
-              Vào bản demo
-            </button>
           </div>
 
           <p className="login-tip">
-            Mặc định: <b>admin.circlek</b> / <b>123456</b>. Nếu gateway chưa chạy, nút demo vẫn mở được UI để test.
+            Chỉ tài khoản và mật khẩu hợp lệ mới vào được hệ thống.
           </p>
         </form>
       </div>
@@ -2385,11 +2849,7 @@ function App() {
         </nav>
 
         <div className="sidebar__footer">
-          <p>
-            {session.mode === 'demo'
-              ? 'Đang chạy với dữ liệu demo để test layout.'
-              : 'Đang chạy với token backend hiện tại.'}
-          </p>
+          <p>Đang chạy với token backend hiện tại.</p>
         </div>
       </aside>
 
@@ -2414,7 +2874,7 @@ function App() {
               <div className="profile-chip__avatar">{profileInitials}</div>
               <div>
                 <strong>{currentUser?.hoTen || currentUser?.username || 'Admin'}</strong>
-                <span>{session.mode === 'demo' ? 'Demo mode' : 'Live mode'}</span>
+                <span>Live mode</span>
               </div>
             </div>
             <button className="ghost-button ghost-button--light" type="button" onClick={handleLogout}>
@@ -2430,10 +2890,114 @@ function App() {
             <strong>Đang nạp dữ liệu giao diện...</strong>
             <p>UI sẽ dựng từ API live nếu có, hoặc fallback nội bộ nếu service chưa phản hồi.</p>
           </section>
-        ) : (
+      ) : (
           renderScreen()
         )}
       </main>
+
+      {showOrderModal && selectedInvoice ? (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal-card modal-card--wide">
+            <div className="panel__header">
+              <div>
+                <p className="eyebrow">Hóa đơn</p>
+                <h3>Chi tiết đơn hàng #{selectedInvoice.orderId}</h3>
+              </div>
+
+              <div className="editor-actions">
+                <button className="primary-button" type="button" onClick={() => void handlePrintOrder()}>
+                  In hóa đơn
+                </button>
+                <button className="ghost-button" type="button" onClick={() => setShowOrderModal(false)}>
+                  X
+                </button>
+              </div>
+            </div>
+
+            <div className="invoice-sheet">
+              <section className="invoice-sheet__hero">
+                <div className="invoice-sheet__brand">
+                  <div>
+                    <p className="eyebrow">{selectedInvoice.storeName}</p>
+                    <h3>Hóa đơn bán hàng</h3>
+                    <p>{selectedInvoice.address}</p>
+                    <p>{selectedInvoice.phone} • {selectedInvoice.email}</p>
+                  </div>
+
+                  <div className="invoice-sheet__code">
+                    <span>Mã đơn</span>
+                    <strong>#{selectedInvoice.orderId}</strong>
+                    <p>{formatDateTime(selectedInvoice.createdAt)}</p>
+                  </div>
+                </div>
+
+                <div className="invoice-sheet__meta">
+                  <div className="invoice-sheet__meta-item">
+                    <span>Khách hàng</span>
+                    <strong>{selectedInvoice.customerName}</strong>
+                  </div>
+                  <div className="invoice-sheet__meta-item">
+                    <span>Nhân viên</span>
+                    <strong>{selectedInvoice.assigneeName}</strong>
+                  </div>
+                  <div className="invoice-sheet__meta-item">
+                    <span>Thanh toán</span>
+                    <strong>{selectedInvoice.paymentMethod}</strong>
+                  </div>
+                </div>
+              </section>
+
+              <div className="table-shell">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Sản phẩm</th>
+                      <th>Số lượng</th>
+                      <th>Đơn giá</th>
+                      <th>Giảm giá</th>
+                      <th>Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedInvoice.items.map((item) => (
+                      <tr key={item.id}>
+                        <td>
+                          <strong>{item.name}</strong>
+                        </td>
+                        <td>{formatCompactNumber(item.quantity)}</td>
+                        <td>{formatCurrency(item.unitPrice)}</td>
+                        <td>{formatCurrency(item.discount)}</td>
+                        <td>{formatCurrency(item.lineTotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="invoice-sheet__footer">
+                <article className="invoice-sheet__note">
+                  <p className="eyebrow">Nội dung hóa đơn</p>
+                  <p>{selectedInvoice.note}</p>
+                </article>
+
+                <div className="totals-card">
+                  <div><span>Tạm tính</span><strong>{formatCurrency(selectedInvoice.subtotal)}</strong></div>
+                  <div><span>Giảm giá</span><strong>{formatCurrency(selectedInvoice.discountTotal)}</strong></div>
+                  <div><span>Trước VAT</span><strong>{formatCurrency(selectedInvoice.netAmount)}</strong></div>
+                  <div>
+                    <span>VAT ({selectedInvoice.vatPercent}%)</span>
+                    <strong>{formatCurrency(selectedInvoice.vatAmount)}</strong>
+                  </div>
+                  <div className="totals-card__grand">
+                    <span>Tổng thanh toán</span>
+                    <strong>{formatCurrency(selectedInvoice.grandTotal)}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showUserModal ? (
         <div className="modal-backdrop" role="presentation">
@@ -2564,6 +3128,7 @@ function App() {
               <div className="totals-card">
                 <div><span>Tạm tính</span><strong>{formatCurrency(subtotal)}</strong></div>
                 <div><span>Discount</span><strong>{formatCurrency(discountValue)}</strong></div>
+                <div><span>VAT ({checkoutVatPercent}%)</span><strong>{formatCurrency(vatValue)}</strong></div>
                 <div><span>Khuyến mãi</span><strong>{eventPromo || 'Không có'}</strong></div>
                 <div><span>Thanh toán</span><strong>{paymentMethod}</strong></div>
                 <div className="totals-card__grand"><span>Thành tiền</span><strong>{formatCurrency(grandTotal)}</strong></div>
