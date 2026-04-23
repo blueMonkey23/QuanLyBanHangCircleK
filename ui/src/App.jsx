@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+=======
+import { startTransition, useDeferredValue, useState } from 'react'
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
 import './App.css'
 import { BRANCH_OPTIONS, NAV_ITEMS, logoPc } from './app-config'
 import {
@@ -52,11 +56,7 @@ function App() {
     setAccounts,
     settingsForm,
     setSettingsForm,
-    ensureSectionData,
-    refreshSectionData,
-    refreshSectionsData,
-    invalidateSections,
-    isSectionReady,
+    refreshDashboard: rawRefreshDashboard,
     handleLiveLogin,
     handleLogout: rawHandleLogout,
   } = data
@@ -81,6 +81,13 @@ function App() {
   const permissionKey = permissionNames.join('|')
   const lastAutoLoadKey = useRef('')
 
+  const refreshDashboard = (options = {}) =>
+    rawRefreshDashboard({
+      ...options,
+      permissionNames,
+      currentUser,
+    })
+
   const operations = useAppOperations({
     session,
     currentUser,
@@ -91,19 +98,7 @@ function App() {
     roles,
     setAccounts,
     settingsForm,
-    refreshSectionData: (section, options = {}) =>
-      refreshSectionData(section, {
-        ...options,
-        overrideCurrentUser: currentUser,
-        overridePermissionNames: permissionNames,
-      }),
-    refreshSectionsData: (sections, options = {}) =>
-      refreshSectionsData(sections, {
-        ...options,
-        overrideCurrentUser: currentUser,
-        overridePermissionNames: permissionNames,
-      }),
-    invalidateSections,
+    refreshDashboard,
     setNotice,
     setBusyAction,
   })
@@ -161,6 +156,7 @@ function App() {
 
   const activeMeta = availableNavItems.find((item) => item.id === resolvedActiveSection) || availableNavItems[0]
 
+<<<<<<< HEAD
   useEffect(() => {
     if (!session?.token || session.mode === 'demo' || !resolvedActiveSection || !currentUser) {
       return
@@ -186,6 +182,8 @@ function App() {
     session?.token,
   ])
 
+=======
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
   const profileInitials = normalizeText(currentUser?.hoTen || currentUser?.username || 'AD')
     .split(' ')
     .filter(Boolean)
@@ -321,12 +319,7 @@ function App() {
             ordersSearch={ordersSearch}
             setOrdersSearch={setOrdersSearch}
             filteredOrders={filteredOrders}
-            refreshSectionData={() => refreshSectionData('orders', {
-              silent: true,
-              announce: true,
-              overrideCurrentUser: currentUser,
-              overridePermissionNames: permissionNames,
-            })}
+            refreshDashboard={refreshDashboard}
             syncing={syncing}
             handleViewOrder={handleViewOrder}
             handlePrintOrder={handlePrintOrder}
@@ -483,12 +476,7 @@ function App() {
             <button
               className="ghost-button ghost-button--light"
               type="button"
-              onClick={() => void refreshSectionData(resolvedActiveSection, {
-                silent: true,
-                announce: true,
-                overrideCurrentUser: currentUser,
-                overridePermissionNames: permissionNames,
-              })}
+              onClick={() => void refreshDashboard({ silent: true })}
               disabled={syncing}
             >
               {syncing ? 'Đang đồng bộ...' : 'Làm mới'}
@@ -497,7 +485,7 @@ function App() {
               <div className="profile-chip__avatar">{profileInitials}</div>
               <div>
                 <strong>{currentUser?.hoTen || currentUser?.username || 'Admin'}</strong>
-                <span>Live mode</span>
+                <span>{session?.mode === 'demo' ? 'Demo mode' : 'Live mode'}</span>
               </div>
             </div>
             <button className="ghost-button ghost-button--light" type="button" onClick={handleLogout}>
@@ -508,7 +496,7 @@ function App() {
 
         <NoticeBar notice={notice} />
 
-        {booting || (session?.mode !== 'demo' && resolvedActiveSection && !isSectionReady(resolvedActiveSection)) ? (
+        {booting ? (
           <section className="panel panel--loading">
             <strong>Đang nạp dữ liệu giao diện...</strong>
             <p>UI sẽ dựng từ API live nếu có, hoặc fallback nội bộ nếu service chưa phản hồi.</p>

@@ -25,9 +25,7 @@ function useAppOperations({
   roles,
   setAccounts,
   settingsForm,
-  refreshSectionData,
-  refreshSectionsData,
-  invalidateSections,
+  refreshDashboard,
   setNotice,
   setBusyAction,
 }) {
@@ -111,7 +109,7 @@ function useAppOperations({
           await api.createProduct(payload)
         }
 
-        await refreshSectionData('products', { silent: true })
+        await refreshDashboard({ silent: true })
       }
 
       resetProductForm()
@@ -141,7 +139,7 @@ function useAppOperations({
         setProducts((current) => current.filter((product) => String(product.id) !== String(productId)))
       } else {
         await api.deleteProduct(productId)
-        await refreshSectionData('products', { silent: true })
+        await refreshDashboard({ silent: true })
       }
 
       setNotice({
@@ -198,7 +196,11 @@ function useAppOperations({
           hoTen: nextAccount.fullName,
           dienThoai: nextAccount.phone,
         })
+<<<<<<< HEAD
         setAccounts((current) => upsertById(current, nextAccount))
+=======
+        await refreshDashboard({ silent: true })
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
       } else {
         const result = await api.createAccount({
           username: nextAccount.username,
@@ -207,10 +209,14 @@ function useAppOperations({
           hoTen: nextAccount.fullName,
           dienThoai: nextAccount.phone,
         })
+<<<<<<< HEAD
         setAccounts((current) => upsertById(current, {
           ...nextAccount,
           id: Number(readField(result, 'maTaiKhoan', 'MaTaiKhoan') ?? nextAccount.id),
         }))
+=======
+        await refreshDashboard({ silent: true })
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
       }
 
       setShowUserModal(false)
@@ -349,8 +355,7 @@ function useAppOperations({
           })),
         })
 
-        await refreshSectionsData(['orders', 'sales'], { silent: true })
-        invalidateSections(['reports'])
+        await refreshDashboard({ silent: true })
       }
 
       setShowCheckoutModal(false)

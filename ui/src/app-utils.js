@@ -159,12 +159,43 @@ export function buildLookup(records, key = 'id', label = 'label') {
   return Object.fromEntries(records.map((record) => [String(record[key]), record[label]]))
 }
 
-export function mapCategories(rawCategories) {
-  if (!Array.isArray(rawCategories) || rawCategories.length === 0) {
-    return FALLBACK_CATEGORIES
+export function unwrapArrayPayload(payload) {
+  if (Array.isArray(payload)) {
+    return payload
   }
 
-  return rawCategories.map((item, index) => ({
+  if (!payload || typeof payload !== 'object') {
+    return []
+  }
+
+  return [
+    payload.data,
+    payload.items,
+    payload.rows,
+    payload.records,
+    payload.result,
+    payload.results,
+  ].find(Array.isArray) || []
+}
+
+export function unwrapObjectPayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return null
+  }
+
+  return payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)
+    ? payload.data
+    : payload
+}
+
+export function mapCategories(rawCategories) {
+  const categories = unwrapArrayPayload(rawCategories)
+
+  if (categories.length === 0) {
+    return []
+  }
+
+  return categories.map((item, index) => ({
     id: String(readField(item, 'MaDanhMuc', 'maDanhMuc') ?? index + 1),
     label: readField(item, 'TenDanhMuc', 'tenDanhMuc') || `Danh mục ${index + 1}`,
     emoji: pickCategoryEmoji(index),
@@ -172,19 +203,23 @@ export function mapCategories(rawCategories) {
 }
 
 export function mapSuppliers(rawSuppliers) {
-  if (!Array.isArray(rawSuppliers) || rawSuppliers.length === 0) {
-    return FALLBACK_SUPPLIERS
+  const suppliers = unwrapArrayPayload(rawSuppliers)
+
+  if (suppliers.length === 0) {
+    return []
   }
 
-  return rawSuppliers.map((item, index) => ({
+  return suppliers.map((item, index) => ({
     id: String(readField(item, 'MaNCC', 'maNCC') ?? index + 1),
     label: readField(item, 'TenCongTy', 'tenCongTy') || `Nhà cung cấp ${index + 1}`,
   }))
 }
 
 export function mapProducts(rawProducts, categories, suppliers) {
-  if (!Array.isArray(rawProducts) || rawProducts.length === 0) {
-    return FALLBACK_PRODUCTS
+  const products = unwrapArrayPayload(rawProducts)
+
+  if (products.length === 0) {
+    return []
   }
 
   const categoryLookup = buildLookup(categories)
@@ -193,7 +228,7 @@ export function mapProducts(rawProducts, categories, suppliers) {
   )
   const supplierLookup = buildLookup(suppliers)
 
-  return rawProducts
+  return products
     .filter((product) => !toBooleanLike(readField(product, 'IsDeleted', 'isDeleted')))
     .map((product, index) => {
       const id = Number(readField(product, 'MaSanPham', 'maSanPham') ?? index + 1)
@@ -221,11 +256,13 @@ export function mapProducts(rawProducts, categories, suppliers) {
 }
 
 export function mapOrders(rawOrders, currentUser) {
-  if (!Array.isArray(rawOrders) || rawOrders.length === 0) {
-    return FALLBACK_ORDERS
+  const orders = unwrapArrayPayload(rawOrders)
+
+  if (orders.length === 0) {
+    return []
   }
 
-  return rawOrders.map((order, index) => ({
+  return orders.map((order, index) => ({
     id: String(readField(order, 'MaHoaDon', 'maHoaDon') ?? `C${index + 1}`),
     customerName:
       readField(
@@ -252,11 +289,13 @@ export function mapOrders(rawOrders, currentUser) {
 }
 
 export function mapRevenueRows(rawRows) {
-  if (!Array.isArray(rawRows) || rawRows.length === 0) {
-    return FALLBACK_REVENUE_ROWS
+  const rows = unwrapArrayPayload(rawRows)
+
+  if (rows.length === 0) {
+    return []
   }
 
-  return rawRows.map((row, index) => ({
+  return rows.map((row, index) => ({
     period: readField(row, 'period', 'Period') || `Mốc ${index + 1}`,
     invoiceCount: Number(readField(row, 'soHoaDon', 'SoHoaDon') ?? 0),
     revenue: Number(readField(row, 'tongDoanhThu', 'TongDoanhThu') ?? 0),
@@ -264,13 +303,15 @@ export function mapRevenueRows(rawRows) {
 }
 
 export function mapTopProducts(rawRows, products) {
-  if (!Array.isArray(rawRows) || rawRows.length === 0) {
-    return FALLBACK_TOP_PRODUCTS
+  const rows = unwrapArrayPayload(rawRows)
+
+  if (rows.length === 0) {
+    return []
   }
 
   const productLookup = Object.fromEntries(products.map((product) => [String(product.id), product.name]))
 
-  return rawRows.map((row, index) => ({
+  return rows.map((row, index) => ({
     id: Number(readField(row, 'maSanPham', 'MaSanPham') ?? index + 1),
     name:
       readField(row, 'tenSanPham', 'TenSanPham') ||
@@ -281,11 +322,13 @@ export function mapTopProducts(rawRows, products) {
 }
 
 export function mapRoles(rawRoles) {
-  if (!Array.isArray(rawRoles) || rawRoles.length === 0) {
-    return FALLBACK_ROLES
+  const roles = unwrapArrayPayload(rawRoles)
+
+  if (roles.length === 0) {
+    return []
   }
 
-  return rawRoles.map((role, index) => ({
+  return roles.map((role, index) => ({
     id: Number(readField(role, 'MaVaiTro', 'maVaiTro') ?? index + 1),
     name: readField(role, 'TenVaiTro', 'tenVaiTro') || `Vai trò ${index + 1}`,
     description:
@@ -295,19 +338,22 @@ export function mapRoles(rawRoles) {
 }
 
 export function mapPermissions(rawPermissions) {
-  if (!Array.isArray(rawPermissions) || rawPermissions.length === 0) {
-    return FALLBACK_PERMISSION_NAMES
+  const permissions = unwrapArrayPayload(rawPermissions)
+
+  if (permissions.length === 0) {
+    return []
   }
 
-  return rawPermissions.map((permission) =>
+  return permissions.map((permission) =>
     readField(permission, 'TenQuyen', 'tenQuyen') || 'UNKNOWN_PERMISSION',
   )
 }
 
-export function mapAccounts(rawAccounts, roles, currentUser) {
+export function mapAccounts(rawAccounts, roles, currentUser, { fallbackOnEmpty = false } = {}) {
   const roleLookup = Object.fromEntries(roles.map((role) => [String(role.id), role.name]))
+  const accounts = unwrapArrayPayload(rawAccounts)
 
-  if (!Array.isArray(rawAccounts) || rawAccounts.length === 0) {
+  if (accounts.length === 0 && fallbackOnEmpty) {
     return [
       {
         id: Number(currentUser?.maTaiKhoan || 1),
@@ -330,7 +376,11 @@ export function mapAccounts(rawAccounts, roles, currentUser) {
     ]
   }
 
-  return rawAccounts.map((account, index) => {
+  if (accounts.length === 0) {
+    return []
+  }
+
+  return accounts.map((account, index) => {
     const roleId = Number(readField(account, 'MaVaiTro', 'maVaiTro') ?? 1)
 
     return {
@@ -351,23 +401,25 @@ export function mapAccounts(rawAccounts, roles, currentUser) {
 }
 
 export function mapSettings(rawSettings) {
-  if (!rawSettings) {
+  const settings = unwrapObjectPayload(rawSettings)
+
+  if (!settings) {
     return FALLBACK_SETTINGS
   }
 
   return {
-    tenCuaHang: readField(rawSettings, 'tenCuaHang', 'TenCuaHang') || FALLBACK_SETTINGS.tenCuaHang,
-    diaChi: readField(rawSettings, 'diaChi', 'DiaChi') || FALLBACK_SETTINGS.diaChi,
+    tenCuaHang: readField(settings, 'tenCuaHang', 'TenCuaHang') || FALLBACK_SETTINGS.tenCuaHang,
+    diaChi: readField(settings, 'diaChi', 'DiaChi') || FALLBACK_SETTINGS.diaChi,
     soDienThoai:
-      readField(rawSettings, 'soDienThoai', 'SoDienThoai') || FALLBACK_SETTINGS.soDienThoai,
-    email: readField(rawSettings, 'email', 'Email') || FALLBACK_SETTINGS.email,
+      readField(settings, 'soDienThoai', 'SoDienThoai') || FALLBACK_SETTINGS.soDienThoai,
+    email: readField(settings, 'email', 'Email') || FALLBACK_SETTINGS.email,
     noiDungHoaDon:
-      readField(rawSettings, 'noiDungHoaDon', 'NoiDungHoaDon') ||
+      readField(settings, 'noiDungHoaDon', 'NoiDungHoaDon') ||
       FALLBACK_SETTINGS.noiDungHoaDon,
     vatPercent: String(
-      readField(rawSettings, 'vatPercent', 'VatPercent') ?? FALLBACK_SETTINGS.vatPercent,
+      readField(settings, 'vatPercent', 'VatPercent') ?? FALLBACK_SETTINGS.vatPercent,
     ),
-    logo: readField(rawSettings, 'logo', 'Logo') || FALLBACK_SETTINGS.logo,
+    logo: readField(settings, 'logo', 'Logo') || FALLBACK_SETTINGS.logo,
   }
 }
 

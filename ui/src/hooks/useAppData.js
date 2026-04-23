@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useCallback, useEffect, useMemo, useState } from 'react'
+=======
+import { useEffect, useState } from 'react'
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
 import { api, clearSession, readSession, saveSession } from '../api'
 import {
   FALLBACK_CATEGORIES,
@@ -28,46 +32,8 @@ import {
   mapTopProducts,
   normalizeSession,
   readField,
+  unwrapObjectPayload,
 } from '../app-utils'
-
-const RESOURCE_KEYS = ['catalog', 'orders', 'reports', 'users', 'settings']
-
-const SECTION_RESOURCE_MAP = {
-  orders: ['orders'],
-  products: ['catalog'],
-  sales: ['catalog'],
-  reports: ['reports'],
-  users: ['users'],
-  settings: ['settings'],
-}
-
-function createResourceStatus(status = 'idle') {
-  return Object.fromEntries(RESOURCE_KEYS.map((key) => [key, status]))
-}
-
-function getResourcesForSections(sections) {
-  return Array.from(
-    new Set(
-      sections.flatMap((section) => SECTION_RESOURCE_MAP[section] || []),
-    ),
-  )
-}
-
-function hasPermissionForResource(resource, permissionNames) {
-  switch (resource) {
-    case 'catalog':
-    case 'orders':
-      return permissionNames.includes(PERMISSIONS.SALES) || permissionNames.includes(PERMISSIONS.PRODUCTS)
-    case 'reports':
-      return permissionNames.includes(PERMISSIONS.REPORTS)
-    case 'users':
-      return permissionNames.includes(PERMISSIONS.USERS)
-    case 'settings':
-      return permissionNames.includes(PERMISSIONS.SETTINGS)
-    default:
-      return false
-  }
-}
 
 function getFallbackSummary() {
   return {
@@ -85,10 +51,13 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   const [busyAction, setBusyAction] = useState('')
   const [notice, setNotice] = useState({
     tone: 'info',
-    message: 'UI Ä‘ang bÃ¡m láº¡i layout trong há»“ sÆ¡ cÃ¡ nhÃ¢n.fig.',
+    message: 'UI dang bam lai layout trong ho so ca nhan.fig.',
   })
   const [loginForm, setLoginForm] = useState(INITIAL_LOGIN_FORM)
+<<<<<<< HEAD
   const [resourceStatus, setResourceStatus] = useState(() => createResourceStatus())
+=======
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
 
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
   const [suppliers, setSuppliers] = useState(FALLBACK_SUPPLIERS)
@@ -99,6 +68,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   const [summary, setSummary] = useState(getFallbackSummary)
   const [roles, setRoles] = useState(FALLBACK_ROLES)
   const [permissionNamesCatalog, setPermissionNamesCatalog] = useState(FALLBACK_PERMISSION_NAMES)
+<<<<<<< HEAD
   const [accounts, setAccounts] = useState([])
   const [settingsForm, setSettingsForm] = useState(FALLBACK_SETTINGS)
 
@@ -123,6 +93,16 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   }, [])
 
   const persistSession = useCallback((nextSession) => {
+=======
+  const [accounts, setAccounts] = useState(() =>
+    initialSession?.mode === 'demo'
+      ? mapAccounts([], FALLBACK_ROLES, initialSession.user, { fallbackOnEmpty: true })
+      : [],
+  )
+  const [settingsForm, setSettingsForm] = useState(FALLBACK_SETTINGS)
+
+  function persistSession(nextSession) {
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
     const normalized = normalizeSession(nextSession)
     setSession(normalized)
 
@@ -131,228 +111,200 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
     } else {
       clearSession()
     }
-  }, [])
+  }
 
+<<<<<<< HEAD
   const handleUnauthorized = useCallback(() => {
+=======
+  function createDemoSession() {
+    return {
+      ...DEMO_SESSION,
+      user: {
+        ...DEMO_SESSION.user,
+        permissions: [...DEMO_SESSION.user.permissions],
+      },
+    }
+  }
+
+  function applyDemoState(nextSession) {
+    const demoSession = nextSession || createDemoSession()
+    setCategories(FALLBACK_CATEGORIES)
+    setSuppliers(FALLBACK_SUPPLIERS)
+    setProducts(FALLBACK_PRODUCTS)
+    setOrders(FALLBACK_ORDERS)
+    setReportRows(FALLBACK_REVENUE_ROWS)
+    setTopProducts(FALLBACK_TOP_PRODUCTS)
+    setSummary(getFallbackSummary())
+    setRoles(FALLBACK_ROLES)
+    setPermissionNamesCatalog(FALLBACK_PERMISSION_NAMES)
+    setAccounts(mapAccounts([], FALLBACK_ROLES, demoSession.user, { fallbackOnEmpty: true }))
+    setSettingsForm(FALLBACK_SETTINGS)
+    setSyncing(false)
+    setBooting(false)
+  }
+
+  function enterDemoMode(message) {
+    const demoSession = createDemoSession()
+    persistSession(demoSession)
+    applyDemoState(demoSession)
+    setNotice({
+      tone: 'warning',
+      message,
+    })
+  }
+
+  function handleUnauthorized() {
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
     persistSession(null)
-    resetLiveViewState(null)
     onUnauthorizedUiReset?.()
     setBooting(false)
-  }, [onUnauthorizedUiReset, persistSession, resetLiveViewState])
+  }
 
-  const applyResourcePayload = useCallback((resource, payload, activeUser) => {
-    switch (resource) {
-      case 'catalog': {
-        const mappedCategories = mapCategories(payload.categories)
-        const mappedSuppliers = mapSuppliers(payload.suppliers)
-        const mappedProducts = mapProducts(payload.products, mappedCategories, mappedSuppliers)
-        setCategories(mappedCategories)
-        setSuppliers(mappedSuppliers)
-        setProducts(mappedProducts)
-        break
-      }
-      case 'orders':
-        setOrders(mapOrders(payload.orders, activeUser))
-        break
-      case 'reports':
-        setReportRows(mapRevenueRows(payload.revenue))
-        setTopProducts(mapTopProducts(payload.topProducts, products))
-        setSummary({
-          invoiceCount: Number(
-            readField(payload.invoiceSummary, 'soHoaDon', 'SoHoaDon') ?? getFallbackSummary().invoiceCount,
-          ),
-          revenue: Number(
-            readField(payload.invoiceSummary, 'tongDoanhThu', 'TongDoanhThu') ?? getFallbackSummary().revenue,
-          ),
-        })
-        break
-      case 'users': {
-        const mappedRoles = mapRoles(payload.roles)
-        setRoles(mappedRoles)
-        setPermissionNamesCatalog(mapPermissions(payload.permissions))
-        setAccounts(mapAccounts(payload.accounts, mappedRoles, activeUser))
-        break
-      }
-      case 'settings':
-        setSettingsForm(mapSettings(payload.settings))
-        break
-      default:
-        break
-    }
-  }, [products])
-
-  const applyResourceFallback = useCallback((resource, activeUser) => {
-    switch (resource) {
-      case 'catalog':
-        setCategories(FALLBACK_CATEGORIES)
-        setSuppliers(FALLBACK_SUPPLIERS)
-        setProducts(FALLBACK_PRODUCTS)
-        break
-      case 'orders':
-        setOrders(FALLBACK_ORDERS)
-        break
-      case 'reports':
-        setReportRows(FALLBACK_REVENUE_ROWS)
-        setTopProducts(FALLBACK_TOP_PRODUCTS)
-        setSummary(getFallbackSummary())
-        break
-      case 'users':
-        setRoles(FALLBACK_ROLES)
-        setPermissionNamesCatalog(FALLBACK_PERMISSION_NAMES)
-        setAccounts(mapAccounts([], FALLBACK_ROLES, activeUser))
-        break
-      case 'settings':
-        setSettingsForm(FALLBACK_SETTINGS)
-        break
-      default:
-        break
-    }
-  }, [])
-
-  const loadResource = useCallback(async (resource) => {
-    switch (resource) {
-      case 'catalog': {
-        const [productsPayload, categoriesPayload, suppliersPayload] = await Promise.all([
-          api.getProducts(),
-          api.getCategories(),
-          api.getSuppliers(),
-        ])
-
-        return {
-          products: productsPayload,
-          categories: categoriesPayload,
-          suppliers: suppliersPayload,
-        }
-      }
-      case 'orders':
-        return {
-          orders: await api.getOrders(),
-        }
-      case 'reports': {
-        const [invoiceSummary, revenue, topProductsPayload] = await Promise.all([
-          api.getInvoiceSummary({}),
-          api.getRevenueReport({ groupBy: 'day' }),
-          api.getTopProductsReport({ limit: 5 }),
-        ])
-
-        return {
-          invoiceSummary,
-          revenue,
-          topProducts: topProductsPayload,
-        }
-      }
-      case 'users': {
-        const [rolesPayload, permissionsPayload, accountsPayload] = await Promise.all([
-          api.getRoles(),
-          api.getPermissions(),
-          api.getAccounts(),
-        ])
-
-        return {
-          roles: rolesPayload,
-          permissions: permissionsPayload,
-          accounts: accountsPayload,
-        }
-      }
-      case 'settings':
-        return {
-          settings: await api.getSystemSettings(),
-        }
-      default:
-        return null
-    }
-  }, [])
-
-  const loadSections = useCallback(async (
-    sections,
-    {
-      force = false,
-      silent = false,
-      announce = false,
-      overrideCurrentUser = currentUser,
-      overridePermissionNames = permissionNames,
-    } = {},
-  ) => {
+  async function refreshDashboard({ silent = false, permissionNames = [], currentUser = null } = {}) {
     if (!session?.token || session.mode === 'demo') {
       return
     }
 
-    const resources = getResourcesForSections(Array.isArray(sections) ? sections : [sections])
-      .filter((resource) => hasPermissionForResource(resource, overridePermissionNames))
-      .filter((resource) => force || resourceStatus[resource] !== 'ready')
-      .filter((resource) => resourceStatus[resource] !== 'loading')
+    if (silent) {
+      setSyncing(true)
+    } else {
+      setBooting(true)
+    }
 
+<<<<<<< HEAD
     if (resources.length === 0) {
       setBooting(false)
       setSyncing(false)
+=======
+    const requests = [
+      { key: 'me', run: () => api.getMe() },
+      {
+        key: 'products',
+        enabled: permissionNames.includes(PERMISSIONS.SALES) || permissionNames.includes(PERMISSIONS.PRODUCTS),
+        run: () => api.getProducts(),
+      },
+      {
+        key: 'categories',
+        enabled: permissionNames.includes(PERMISSIONS.SALES) || permissionNames.includes(PERMISSIONS.PRODUCTS),
+        run: () => api.getCategories(),
+      },
+      {
+        key: 'suppliers',
+        enabled: permissionNames.includes(PERMISSIONS.SALES) || permissionNames.includes(PERMISSIONS.PRODUCTS),
+        run: () => api.getSuppliers(),
+      },
+      { key: 'orders', enabled: permissionNames.includes(PERMISSIONS.SALES), run: () => api.getOrders() },
+      { key: 'invoiceSummary', enabled: permissionNames.includes(PERMISSIONS.REPORTS), run: () => api.getInvoiceSummary({}) },
+      { key: 'revenue', enabled: permissionNames.includes(PERMISSIONS.REPORTS), run: () => api.getRevenueReport({ groupBy: 'day' }) },
+      { key: 'topProducts', enabled: permissionNames.includes(PERMISSIONS.REPORTS), run: () => api.getTopProductsReport({ limit: 5 }) },
+      { key: 'roles', enabled: permissionNames.includes(PERMISSIONS.USERS), run: () => api.getRoles() },
+      { key: 'permissions', enabled: permissionNames.includes(PERMISSIONS.USERS), run: () => api.getPermissions() },
+      { key: 'accounts', enabled: permissionNames.includes(PERMISSIONS.USERS), run: () => api.getAccounts() },
+      { key: 'settings', enabled: permissionNames.includes(PERMISSIONS.SETTINGS), run: () => api.getSystemSettings() },
+    ].filter((item) => item.enabled !== false)
+
+    const results = await Promise.allSettled(requests.map((request) => request.run()))
+
+    const meRequestFailed =
+      results[0]?.status === 'rejected' && !results[0]?.reason?.status
+
+    if (meRequestFailed) {
+      enterDemoMode('Khong ket noi duoc backend, UI da chuyen sang demo mode voi du lieu mau day du.')
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
       return
     }
 
-    const shouldShowBooting = !silent && resources.some((resource) => resourceStatus[resource] !== 'ready')
-
-    if (shouldShowBooting) {
-      setBooting(true)
-    } else if (silent) {
-      setSyncing(true)
-    }
-
-    setResourceStatus((current) => ({
-      ...current,
-      ...Object.fromEntries(resources.map((resource) => [resource, 'loading'])),
-    }))
-
-    const results = await Promise.allSettled(
-      resources.map(async (resource) => ({
-        resource,
-        payload: await loadResource(resource),
-      })),
-    )
-
-    const unauthorized = results.find(
-      (result) => result.status === 'rejected' && result.reason?.status === 401,
-    )
-
-    if (unauthorized) {
+    if (results.some((result) => result.status === 'rejected' && result.reason?.status === 401)) {
       handleUnauthorized()
       setNotice({
         tone: 'warning',
-        message: 'PhiÃªn Ä‘Äƒng nháº­p Ä‘Ã£ háº¿t háº¡n. HÃ£y Ä‘Äƒng nháº­p láº¡i.',
+        message: 'Phien dang nhap da het han. Hay dang nhap lai.',
       })
       return
     }
 
-    const failedResources = []
+    const payloads = {}
+    const fallbackBlocks = []
 
-    results.forEach((result, index) => {
-      const resource = resources[index]
+    requests.forEach((request, index) => {
+      const result = results[index]
 
       if (result.status === 'fulfilled') {
-        applyResourcePayload(resource, result.value.payload, overrideCurrentUser)
+        payloads[request.key] = result.value
       } else {
-        failedResources.push(resource)
-        applyResourceFallback(resource, overrideCurrentUser)
+        fallbackBlocks.push(request.key)
       }
     })
 
-    setResourceStatus((current) => ({
-      ...current,
-      ...Object.fromEntries(resources.map((resource) => [resource, 'ready'])),
-    }))
+    const shouldMapCatalog = payloads.products || payloads.categories || payloads.suppliers
+    const shouldMapReports = payloads.invoiceSummary || payloads.revenue || payloads.topProducts
+    const shouldMapUsers = payloads.roles || payloads.permissions || payloads.accounts
 
-    if (failedResources.length > 0) {
+    let mappedProducts = products
+    let mappedRoles = roles
+
+    if (shouldMapCatalog) {
+      const mappedCategories = mapCategories(payloads.categories)
+      const mappedSuppliers = mapSuppliers(payloads.suppliers)
+      mappedProducts = mapProducts(payloads.products, mappedCategories, mappedSuppliers)
+
+      setCategories(mappedCategories)
+      setSuppliers(mappedSuppliers)
+      setProducts(mappedProducts)
+    }
+
+    if (payloads.orders) {
+      setOrders(mapOrders(payloads.orders, payloads.me || currentUser))
+    }
+
+    if (shouldMapReports) {
+      const invoiceSummary = unwrapObjectPayload(payloads.invoiceSummary)
+      setReportRows(mapRevenueRows(payloads.revenue))
+      setTopProducts(mapTopProducts(payloads.topProducts, mappedProducts))
+      setSummary({
+        invoiceCount: Number(readField(invoiceSummary, 'soHoaDon', 'SoHoaDon') ?? 0),
+        revenue: Number(readField(invoiceSummary, 'tongDoanhThu', 'TongDoanhThu') ?? 0),
+      })
+    }
+
+    if (shouldMapUsers) {
+      mappedRoles = mapRoles(payloads.roles)
+      setRoles(mappedRoles)
+      setPermissionNamesCatalog(mapPermissions(payloads.permissions))
+      setAccounts(mapAccounts(payloads.accounts, mappedRoles, payloads.me || currentUser))
+    }
+
+    if (payloads.settings) {
+      setSettingsForm(mapSettings(payloads.settings))
+    }
+
+    if (payloads.me) {
+      persistSession({
+        token: session.token,
+        mode: 'live',
+        user: {
+          ...currentUser,
+          ...payloads.me,
+          permissions: payloads.me.permissions || currentUser?.permissions || [],
+        },
+      })
+    }
+
+    if (fallbackBlocks.length > 0) {
       setNotice({
         tone: 'warning',
-        message: `Khong tai duoc mot so khoi du lieu (${failedResources.join(', ')}), UI dang dung fallback cho cac khoi nay.`,
+        message: `Mot so service chua phan hoi, dang giu/fallback cho: ${fallbackBlocks.join(', ')}.`,
       })
-    } else if (announce) {
+    } else {
       setNotice({
         tone: 'success',
-        message: 'Du lieu cua man hien tai da duoc cap nhat.',
+        message: 'Du lieu da dong bo day du tu gateway va cac service hien tai.',
       })
     }
 
     setBooting(false)
     setSyncing(false)
+<<<<<<< HEAD
   }, [
     applyResourceFallback,
     applyResourcePayload,
@@ -433,6 +385,9 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
 
     setBooting(false)
   }, [handleUnauthorized, persistSession, sessionMode, sessionToken])
+=======
+  }
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
 
   async function handleLiveLogin(event) {
     event.preventDefault()
@@ -440,7 +395,6 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
 
     try {
       const result = await api.login(loginForm)
-      setResourceStatus(createResourceStatus())
       persistSession({
         ...result,
         mode: 'live',
@@ -472,12 +426,19 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   useEffect(() => {
     if (sessionToken && sessionMode !== 'demo') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      void bootstrapSession()
-      return
+      void refreshDashboard({
+        permissionNames: getPermissionNames(session?.user),
+        currentUser: session?.user || null,
+      })
     }
+<<<<<<< HEAD
 
     setBooting(false)
   }, [bootstrapSession, sessionMode, sessionToken])
+=======
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, session?.mode])
+>>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
 
   return {
     session,
@@ -511,12 +472,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
     setAccounts,
     settingsForm,
     setSettingsForm,
-    ensureSectionData,
-    refreshSectionData,
-    refreshSectionsData,
-    invalidateSections,
-    isSectionReady,
-    isSectionLoading,
+    refreshDashboard,
     handleLiveLogin,
     handleLogout,
   }
