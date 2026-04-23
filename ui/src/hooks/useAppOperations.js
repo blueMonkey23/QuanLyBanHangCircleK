@@ -25,9 +25,7 @@ function useAppOperations({
   roles,
   setAccounts,
   settingsForm,
-  refreshSectionData,
-  refreshSectionsData,
-  invalidateSections,
+  refreshDashboard,
   setNotice,
   setBusyAction,
 }) {
@@ -111,7 +109,7 @@ function useAppOperations({
           await api.createProduct(payload)
         }
 
-        await refreshSectionData('products', { silent: true })
+        await refreshDashboard({ silent: true })
       }
 
       resetProductForm()
@@ -141,7 +139,7 @@ function useAppOperations({
         setProducts((current) => current.filter((product) => String(product.id) !== String(productId)))
       } else {
         await api.deleteProduct(productId)
-        await refreshSectionData('products', { silent: true })
+        await refreshDashboard({ silent: true })
       }
 
       setNotice({
@@ -198,7 +196,7 @@ function useAppOperations({
           hoTen: nextAccount.fullName,
           dienThoai: nextAccount.phone,
         })
-        await refreshSectionData('users', { silent: true })
+        await refreshDashboard({ silent: true })
       } else {
         await api.createAccount({
           username: nextAccount.username,
@@ -207,7 +205,7 @@ function useAppOperations({
           hoTen: nextAccount.fullName,
           dienThoai: nextAccount.phone,
         })
-        await refreshSectionData('users', { silent: true })
+        await refreshDashboard({ silent: true })
       }
 
       setShowUserModal(false)
@@ -340,8 +338,7 @@ function useAppOperations({
           })),
         })
 
-        await refreshSectionsData(['orders', 'sales'], { silent: true })
-        invalidateSections(['reports'])
+        await refreshDashboard({ silent: true })
       }
 
       setShowCheckoutModal(false)

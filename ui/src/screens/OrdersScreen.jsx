@@ -6,7 +6,7 @@ function OrdersScreen({
   ordersSearch,
   setOrdersSearch,
   filteredOrders,
-  refreshSectionData,
+  refreshDashboard,
   syncing,
   handleViewOrder,
   handlePrintOrder,
@@ -59,7 +59,7 @@ function OrdersScreen({
           <button
             className="ghost-button"
             type="button"
-            onClick={() => void refreshSectionData()}
+            onClick={() => void refreshDashboard({ silent: true })}
             disabled={syncing}
           >
             {syncing ? 'Đang tải...' : 'Làm mới'}
