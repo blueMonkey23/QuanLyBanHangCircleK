@@ -21,10 +21,20 @@
   align-content: start;
   gap: 18px;
   padding: 36px;
-  background:
-    radial-gradient(circle at top right, rgba(19, 104, 234, 0.18), transparent 28%),
-    radial-gradient(circle at bottom left, rgba(255, 88, 111, 0.2), transparent 32%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 249, 255, 0.98));
+  background: #f7faff;
+}
+
+.login-hero__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.login-hero__brand img {
+  display: block;
+  width: 148px;
+  max-width: 100%;
+  height: auto;
 }
 
 .login-hero h1 {
@@ -87,9 +97,7 @@
   gap: 24px;
   padding: 28px 22px;
   border-radius: 34px;
-  background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 22%),
-    linear-gradient(180deg, #ff5d6b 0%, #ff6678 42%, #ff7c5c 100%);
+  background: #e84b54;
   box-shadow: 0 28px 60px rgba(194, 68, 86, 0.28);
   color: #fff7f8;
 }
@@ -102,15 +110,19 @@
 
 .sidebar__logo {
   display: grid;
-  width: 62px;
+  width: 120px;
   height: 62px;
   place-items: center;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.88);
-  color: #ff5d6b;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 20px 40px rgba(125, 15, 32, 0.18);
+}
+
+.sidebar__logo img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .sidebar__nav {
@@ -197,9 +209,7 @@
   gap: 20px;
   padding: 24px 26px;
   border-radius: 34px;
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 22%),
-    linear-gradient(135deg, #2c86ff 0%, #1264da 70%, #0e53b8 100%);
+  background: #1264da;
   box-shadow: 0 28px 70px rgba(17, 77, 170, 0.28);
   color: #f8fbff;
 }
@@ -292,15 +302,11 @@
 }
 
 .panel--soft {
-  background:
-    radial-gradient(circle at top right, rgba(19, 104, 234, 0.1), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 248, 255, 0.96));
+  background: #f4f8ff;
 }
 
 .panel--accent {
-  background:
-    radial-gradient(circle at top left, rgba(255, 93, 107, 0.18), transparent 26%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 246, 248, 0.98));
+  background: #fff4f5;
 }
 
 .panel--editor {
@@ -369,23 +375,23 @@
 }
 
 .metric-card--red {
-  background: linear-gradient(180deg, rgba(255, 239, 242, 0.98), rgba(255, 255, 255, 0.96));
+  background: #fff0f3;
 }
 
 .metric-card--amber {
-  background: linear-gradient(180deg, rgba(255, 247, 230, 0.98), rgba(255, 255, 255, 0.96));
+  background: #fff6e7;
 }
 
 .metric-card--green {
-  background: linear-gradient(180deg, rgba(235, 255, 245, 0.98), rgba(255, 255, 255, 0.96));
+  background: #ecfff4;
 }
 
 .metric-card--blue {
-  background: linear-gradient(180deg, rgba(235, 244, 255, 0.98), rgba(255, 255, 255, 0.96));
+  background: #edf4ff;
 }
 
 .metric-card--slate {
-  background: linear-gradient(180deg, rgba(242, 245, 250, 0.98), rgba(255, 255, 255, 0.96));
+  background: #f3f6fa;
 }
 
 .metric-card__eyebrow,
@@ -490,7 +496,7 @@ textarea {
 .primary-button {
   padding: 13px 18px;
   color: #ffffff;
-  background: linear-gradient(135deg, #ff6070, #ff7c5c);
+  background: #ef5a68;
   box-shadow: 0 16px 28px rgba(232, 83, 104, 0.22);
 }
 
@@ -619,9 +625,7 @@ textarea {
   min-height: 118px;
   place-items: center;
   border-radius: 22px;
-  background:
-    radial-gradient(circle at top left, rgba(255, 99, 119, 0.18), transparent 26%),
-    linear-gradient(180deg, #fff7e8, #fff3f5);
+  background: #fff4eb;
   color: #e14d5a;
   font-size: 2rem;
   font-weight: 800;
@@ -740,7 +744,7 @@ textarea {
   width: min(86px, 100%);
   min-height: 40px;
   border-radius: 22px 22px 12px 12px;
-  background: linear-gradient(180deg, #2c86ff, #0f66df);
+  background: #1264da;
   box-shadow: 0 16px 24px rgba(18, 100, 218, 0.18);
 }
 
@@ -778,7 +782,7 @@ textarea {
 
 .category-pill--active {
   color: #ffffff;
-  background: linear-gradient(135deg, #2c86ff, #1264da);
+  background: #1264da;
   box-shadow: 0 12px 20px rgba(18, 100, 218, 0.2);
 }
 
@@ -853,7 +857,7 @@ textarea {
 .invoice-sheet__note {
   padding: 20px;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(246, 249, 255, 0.98), rgba(237, 244, 255, 0.96));
+  background: #f3f7ff;
   border: 1px solid rgba(17, 29, 56, 0.08);
 }
 
