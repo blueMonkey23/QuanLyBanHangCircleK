@@ -29,6 +29,7 @@ import {
   mapTopProducts,
   normalizeSession,
   readField,
+  unwrapObjectPayload,
 } from '../app-utils'
 
 const RESOURCE_KEYS = ['catalog', 'orders', 'reports', 'users', 'settings']
@@ -104,7 +105,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   const [permissionNamesCatalog, setPermissionNamesCatalog] = useState(FALLBACK_PERMISSION_NAMES)
   const [accounts, setAccounts] = useState(() =>
     initialSession?.mode === 'demo'
-      ? mapAccounts([], FALLBACK_ROLES, initialSession.user)
+      ? mapAccounts([], FALLBACK_ROLES, initialSession.user, { fallbackOnEmpty: true })
       : [],
   )
   const [settingsForm, setSettingsForm] = useState(FALLBACK_SETTINGS)
@@ -122,7 +123,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
     setSummary(getFallbackSummary())
     setRoles(FALLBACK_ROLES)
     setPermissionNamesCatalog(FALLBACK_PERMISSION_NAMES)
-    setAccounts(mapAccounts([], FALLBACK_ROLES, nextUser))
+    setAccounts(mapAccounts([], FALLBACK_ROLES, nextUser, { fallbackOnEmpty: true }))
     setSettingsForm(FALLBACK_SETTINGS)
     setResourceStatus(createResourceStatus())
   }, [currentUser])
@@ -159,7 +160,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
     setSummary(getFallbackSummary())
     setRoles(FALLBACK_ROLES)
     setPermissionNamesCatalog(FALLBACK_PERMISSION_NAMES)
-    setAccounts(mapAccounts([], FALLBACK_ROLES, demoSession.user))
+    setAccounts(mapAccounts([], FALLBACK_ROLES, demoSession.user, { fallbackOnEmpty: true }))
     setSettingsForm(FALLBACK_SETTINGS)
     setResourceStatus(createResourceStatus('ready'))
     setSyncing(false)
@@ -197,18 +198,21 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
       case 'orders':
         setOrders(mapOrders(payload.orders, activeUser))
         break
-      case 'reports':
+      case 'reports': {
+        const invoiceSummary = unwrapObjectPayload(payload.invoiceSummary)
+
         setReportRows(mapRevenueRows(payload.revenue))
         setTopProducts(mapTopProducts(payload.topProducts, products))
         setSummary({
           invoiceCount: Number(
-            readField(payload.invoiceSummary, 'soHoaDon', 'SoHoaDon') ?? getFallbackSummary().invoiceCount,
+            readField(invoiceSummary, 'soHoaDon', 'SoHoaDon') ?? 0,
           ),
           revenue: Number(
-            readField(payload.invoiceSummary, 'tongDoanhThu', 'TongDoanhThu') ?? getFallbackSummary().revenue,
+            readField(invoiceSummary, 'tongDoanhThu', 'TongDoanhThu') ?? 0,
           ),
         })
         break
+      }
       case 'users': {
         const mappedRoles = mapRoles(payload.roles)
         setRoles(mappedRoles)
@@ -242,7 +246,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
       case 'users':
         setRoles(FALLBACK_ROLES)
         setPermissionNamesCatalog(FALLBACK_PERMISSION_NAMES)
-        setAccounts(mapAccounts([], FALLBACK_ROLES, activeUser))
+        setAccounts(mapAccounts([], FALLBACK_ROLES, activeUser, { fallbackOnEmpty: true }))
         break
       case 'settings':
         setSettingsForm(FALLBACK_SETTINGS)

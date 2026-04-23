@@ -466,7 +466,6 @@ function App() {
       <main className="workspace">
         <header className="topbar">
           <div className="topbar__copy">
-            <p className="eyebrow">Task bar màu xanh dương</p>
             <h1>{activeMeta?.label || 'Dashboard'}</h1>
             <p>{activeMeta?.description || 'Giao diện quản trị theo thiết kế mới.'}</p>
           </div>
@@ -489,7 +488,7 @@ function App() {
               <div className="profile-chip__avatar">{profileInitials}</div>
               <div>
                 <strong>{currentUser?.hoTen || currentUser?.username || 'Admin'}</strong>
-                <span>Live mode</span>
+                <span>{session?.mode === 'demo' ? 'Demo mode' : 'Live mode'}</span>
               </div>
             </div>
             <button className="ghost-button ghost-button--light" type="button" onClick={handleLogout}>
