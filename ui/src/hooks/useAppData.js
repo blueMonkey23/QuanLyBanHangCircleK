@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, clearSession, readSession, saveSession } from '../api'
 import {
-  DEMO_SESSION,
   FALLBACK_CATEGORIES,
   FALLBACK_ORDERS,
   FALLBACK_PERMISSION_NAMES,
@@ -81,7 +80,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   const initialSession = normalizeSession(readSession())
 
   const [session, setSession] = useState(initialSession)
-  const [booting, setBooting] = useState(() => Boolean(initialSession?.token && initialSession.mode !== 'demo'))
+  const [booting, setBooting] = useState(() => Boolean(initialSession?.token))
   const [syncing, setSyncing] = useState(false)
   const [busyAction, setBusyAction] = useState('')
   const [notice, setNotice] = useState({
@@ -89,9 +88,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
     message: 'UI Ä‘ang bÃ¡m láº¡i layout trong há»“ sÆ¡ cÃ¡ nhÃ¢n.fig.',
   })
   const [loginForm, setLoginForm] = useState(INITIAL_LOGIN_FORM)
-  const [resourceStatus, setResourceStatus] = useState(() =>
-    initialSession?.mode === 'demo' ? createResourceStatus('ready') : createResourceStatus(),
-  )
+  const [resourceStatus, setResourceStatus] = useState(() => createResourceStatus())
 
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
   const [suppliers, setSuppliers] = useState(FALLBACK_SUPPLIERS)
@@ -102,17 +99,15 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   const [summary, setSummary] = useState(getFallbackSummary)
   const [roles, setRoles] = useState(FALLBACK_ROLES)
   const [permissionNamesCatalog, setPermissionNamesCatalog] = useState(FALLBACK_PERMISSION_NAMES)
-  const [accounts, setAccounts] = useState(() =>
-    initialSession?.mode === 'demo'
-      ? mapAccounts([], FALLBACK_ROLES, initialSession.user)
-      : [],
-  )
+  const [accounts, setAccounts] = useState([])
   const [settingsForm, setSettingsForm] = useState(FALLBACK_SETTINGS)
 
   const currentUser = session?.user || null
-  const permissionNames = getPermissionNames(currentUser)
+  const permissionNames = useMemo(() => getPermissionNames(currentUser), [currentUser])
+  const sessionToken = session?.token || ''
+  const sessionMode = session?.mode || ''
 
-  const resetLiveViewState = useCallback((nextUser = currentUser) => {
+  const resetLiveViewState = useCallback((nextUser = null) => {
     setCategories(FALLBACK_CATEGORIES)
     setSuppliers(FALLBACK_SUPPLIERS)
     setProducts(FALLBACK_PRODUCTS)
@@ -125,7 +120,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
     setAccounts(mapAccounts([], FALLBACK_ROLES, nextUser))
     setSettingsForm(FALLBACK_SETTINGS)
     setResourceStatus(createResourceStatus())
-  }, [currentUser])
+  }, [])
 
   const persistSession = useCallback((nextSession) => {
     const normalized = normalizeSession(nextSession)
@@ -137,44 +132,6 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
       clearSession()
     }
   }, [])
-
-  function createDemoSession() {
-    return {
-      ...DEMO_SESSION,
-      user: {
-        ...DEMO_SESSION.user,
-        permissions: [...DEMO_SESSION.user.permissions],
-      },
-    }
-  }
-
-  const applyDemoState = useCallback((nextSession) => {
-    const demoSession = nextSession || createDemoSession()
-    setCategories(FALLBACK_CATEGORIES)
-    setSuppliers(FALLBACK_SUPPLIERS)
-    setProducts(FALLBACK_PRODUCTS)
-    setOrders(FALLBACK_ORDERS)
-    setReportRows(FALLBACK_REVENUE_ROWS)
-    setTopProducts(FALLBACK_TOP_PRODUCTS)
-    setSummary(getFallbackSummary())
-    setRoles(FALLBACK_ROLES)
-    setPermissionNamesCatalog(FALLBACK_PERMISSION_NAMES)
-    setAccounts(mapAccounts([], FALLBACK_ROLES, demoSession.user))
-    setSettingsForm(FALLBACK_SETTINGS)
-    setResourceStatus(createResourceStatus('ready'))
-    setSyncing(false)
-    setBooting(false)
-  }, [])
-
-  const enterDemoMode = useCallback((message) => {
-    const demoSession = createDemoSession()
-    persistSession(demoSession)
-    applyDemoState(demoSession)
-    setNotice({
-      tone: 'warning',
-      message,
-    })
-  }, [applyDemoState, persistSession])
 
   const handleUnauthorized = useCallback(() => {
     persistSession(null)
@@ -326,6 +283,8 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
       .filter((resource) => resourceStatus[resource] !== 'loading')
 
     if (resources.length === 0) {
+      setBooting(false)
+      setSyncing(false)
       return
     }
 
@@ -437,7 +396,7 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   }, [resourceStatus])
 
   const bootstrapSession = useCallback(async () => {
-    if (!session?.token || session.mode === 'demo') {
+    if (!sessionToken || sessionMode === 'demo') {
       setBooting(false)
       return
     }
@@ -447,12 +406,11 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
     try {
       const me = await api.getMe()
       persistSession({
-        token: session.token,
+        token: sessionToken,
         mode: 'live',
         user: {
-          ...session.user,
           ...me,
-          permissions: me.permissions || session.user?.permissions || [],
+          permissions: me.permissions || [],
         },
       })
     } catch (error) {
@@ -465,12 +423,16 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
         return
       }
 
-      enterDemoMode(`Backend chua san sang (${extractErrorMessage(error)}). UI dang chay bang demo data.`)
+      handleUnauthorized()
+      setNotice({
+        tone: 'warning',
+        message: `Khong xac thuc duoc phien dang nhap: ${extractErrorMessage(error)}. Hay dang nhap lai khi backend san sang.`,
+      })
       return
     }
 
     setBooting(false)
-  }, [enterDemoMode, handleUnauthorized, persistSession, session])
+  }, [handleUnauthorized, persistSession, sessionMode, sessionToken])
 
   async function handleLiveLogin(event) {
     event.preventDefault()
@@ -488,7 +450,12 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
         message: 'Dang nhap thanh cong. Dang nap giao dien theo dung quyen cua tai khoan.',
       })
     } catch (error) {
-      enterDemoMode(`Backend chua san sang (${extractErrorMessage(error)}). UI dang chay bang demo data.`)
+      setNotice({
+        tone: 'warning',
+        message: error?.status === 401
+          ? 'Ten dang nhap hoac mat khau khong dung.'
+          : `Khong dang nhap duoc: ${extractErrorMessage(error)}`,
+      })
     } finally {
       setBusyAction('')
     }
@@ -503,14 +470,14 @@ function useAppData({ onUnauthorizedUiReset } = {}) {
   }
 
   useEffect(() => {
-    if (session?.token && session.mode !== 'demo') {
+    if (sessionToken && sessionMode !== 'demo') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       void bootstrapSession()
       return
     }
 
     setBooting(false)
-  }, [bootstrapSession, session?.mode, session?.token])
+  }, [bootstrapSession, sessionMode, sessionToken])
 
   return {
     session,

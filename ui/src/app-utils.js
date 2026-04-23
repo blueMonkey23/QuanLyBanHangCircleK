@@ -10,7 +10,6 @@ import {
   FALLBACK_ROLES,
   FALLBACK_PERMISSION_NAMES,
   FALLBACK_SETTINGS,
-  DEMO_SESSION,
 } from './app-config'
 
 export function readField(record, ...keys) {
@@ -131,16 +130,7 @@ export function normalizeSession(rawSession) {
   }
 
   if (rawSession.token === 'demo-session' || rawSession.mode === 'demo') {
-    return {
-      ...DEMO_SESSION,
-      user: {
-        ...DEMO_SESSION.user,
-        ...rawSession.user,
-        permissions: Array.isArray(rawSession.user.permissions) && rawSession.user.permissions.length > 0
-          ? rawSession.user.permissions
-          : DEMO_SESSION.user.permissions,
-      },
-    }
+    return null
   }
 
   const permissions = Array.isArray(rawSession.user.permissions)

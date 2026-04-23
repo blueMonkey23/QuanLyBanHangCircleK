@@ -1,5 +1,6 @@
 const BASE_URL = '/api/v1'
 const STORAGE_KEY = 'circlek.session'
+const REQUEST_TIMEOUT_MS = 15000
 
 let authToken = ''
 
@@ -41,6 +42,12 @@ export function readSession() {
 
   try {
     const session = JSON.parse(raw)
+    if (session?.token === 'demo-session' || session?.mode === 'demo') {
+      window.localStorage.removeItem(STORAGE_KEY)
+      setAuthToken('')
+      return null
+    }
+
     setAuthToken(session?.token || '')
     return session
   } catch {
@@ -58,6 +65,8 @@ export function clearSession() {
 }
 
 async function request(path, options = {}) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   const headers = {
     ...(options.headers || {}),
   }
@@ -70,10 +79,23 @@ async function request(path, options = {}) {
     headers.Authorization = `Bearer ${authToken}`
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers,
-  })
+  let response
+
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Request timeout. Kiem tra gateway/backend dang chay hay khong.')
+    }
+
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   const contentType = response.headers.get('content-type') || ''
   const payload = contentType.includes('application/json')

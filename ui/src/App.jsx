@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useState } from 'react'
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { BRANCH_OPTIONS, NAV_ITEMS, logoPc } from './app-config'
 import {
@@ -77,7 +77,9 @@ function App() {
   const deferredUserSearch = useDeferredValue(userSearch)
 
   const currentUser = session?.user || null
-  const permissionNames = getPermissionNames(currentUser)
+  const permissionNames = useMemo(() => getPermissionNames(currentUser), [currentUser])
+  const permissionKey = permissionNames.join('|')
+  const lastAutoLoadKey = useRef('')
 
   const operations = useAppOperations({
     session,
@@ -164,6 +166,12 @@ function App() {
       return
     }
 
+    const autoLoadKey = `${session.token}:${resolvedActiveSection}:${permissionKey}`
+    if (lastAutoLoadKey.current === autoLoadKey) {
+      return
+    }
+    lastAutoLoadKey.current = autoLoadKey
+
     void ensureSectionData(resolvedActiveSection, {
       overrideCurrentUser: currentUser,
       overridePermissionNames: permissionNames,
@@ -172,6 +180,7 @@ function App() {
     currentUser,
     ensureSectionData,
     permissionNames,
+    permissionKey,
     resolvedActiveSection,
     session?.mode,
     session?.token,
@@ -466,7 +475,6 @@ function App() {
       <main className="workspace">
         <header className="topbar">
           <div className="topbar__copy">
-            <p className="eyebrow">Task bar màu xanh dương</p>
             <h1>{activeMeta?.label || 'Dashboard'}</h1>
             <p>{activeMeta?.description || 'Giao diện quản trị theo thiết kế mới.'}</p>
           </div>

@@ -29,6 +29,13 @@ function accessLogMiddleware(req, res, next) {
   next();
 }
 
+function noCacheMiddleware(req, res, next) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+}
+
 function notFoundHandler(req, res) {
   res.status(404).json({
     code: 'NOT_FOUND',
@@ -56,6 +63,7 @@ function errorHandler(err, req, res, next) {
 module.exports = {
   requestIdMiddleware,
   accessLogMiddleware,
+  noCacheMiddleware,
   notFoundHandler,
   errorHandler,
 };
