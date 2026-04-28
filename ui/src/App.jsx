@@ -1,8 +1,6 @@
-<<<<<<< HEAD
+
 import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-=======
-import { startTransition, useDeferredValue, useState } from 'react'
->>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
+
 import './App.css'
 import { BRANCH_OPTIONS, NAV_ITEMS, logoPc } from './app-config'
 import {
@@ -156,34 +154,13 @@ function App() {
 
   const activeMeta = availableNavItems.find((item) => item.id === resolvedActiveSection) || availableNavItems[0]
 
-<<<<<<< HEAD
   useEffect(() => {
     if (!session?.token || session.mode === 'demo' || !resolvedActiveSection || !currentUser) {
       return
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, session?.mode])
 
-    const autoLoadKey = `${session.token}:${resolvedActiveSection}:${permissionKey}`
-    if (lastAutoLoadKey.current === autoLoadKey) {
-      return
-    }
-    lastAutoLoadKey.current = autoLoadKey
-
-    void ensureSectionData(resolvedActiveSection, {
-      overrideCurrentUser: currentUser,
-      overridePermissionNames: permissionNames,
-    })
-  }, [
-    currentUser,
-    ensureSectionData,
-    permissionNames,
-    permissionKey,
-    resolvedActiveSection,
-    session?.mode,
-    session?.token,
-  ])
-
-=======
->>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
   const profileInitials = normalizeText(currentUser?.hoTen || currentUser?.username || 'AD')
     .split(' ')
     .filter(Boolean)

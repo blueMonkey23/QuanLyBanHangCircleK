@@ -196,11 +196,7 @@ function useAppOperations({
           hoTen: nextAccount.fullName,
           dienThoai: nextAccount.phone,
         })
-<<<<<<< HEAD
         setAccounts((current) => upsertById(current, nextAccount))
-=======
-        await refreshDashboard({ silent: true })
->>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
       } else {
         const result = await api.createAccount({
           username: nextAccount.username,
@@ -209,19 +205,15 @@ function useAppOperations({
           hoTen: nextAccount.fullName,
           dienThoai: nextAccount.phone,
         })
-<<<<<<< HEAD
         setAccounts((current) => upsertById(current, {
           ...nextAccount,
           id: Number(readField(result, 'maTaiKhoan', 'MaTaiKhoan') ?? nextAccount.id),
         }))
-=======
-        await refreshDashboard({ silent: true })
->>>>>>> 64d87e8012a53710c3850198fcbd5b9837612b91
       }
 
       setShowUserModal(false)
       setAccountForm(EMPTY_ACCOUNT_FORM)
-      void refreshSectionData('users', { silent: true }).catch((error) => {
+      void refreshDashboard({ silent: true }).catch((error) => {
         setNotice({
           tone: 'warning',
           message: `Tai khoan da duoc luu, nhung chua refresh duoc danh sach: ${extractErrorMessage(error)}`,
